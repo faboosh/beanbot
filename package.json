@@ -1,0 +1,31 @@
+{
+  "name": "youtube-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsc && node .\\dist\\main.js",
+    "sync": "tsc && node .\\dist\\sync.js",
+    "sandbox": "tsc && node .\\dist\\sandbox.js",
+    "sync-plays": "tsc && node .\\dist\\sync-plays.js",
+    "correlate-users": "tsc && node .\\dist\\correlate-users.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/voice": "^0.16.1",
+    "@spotify/web-api-ts-sdk": "^1.1.2",
+    "canvas": "^2.11.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "knex": "^3.1.0",
+    "libsodium-wrappers": "^0.7.13",
+    "sqlite3": "^5.1.7",
+    "youtubei.js": "^8.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,0 +1,8 @@
+/node_modules
+/dist
+/download
+/cache
+*.env
+.env
+*.sqlite3
+messages*.json
