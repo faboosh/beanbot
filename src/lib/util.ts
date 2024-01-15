@@ -28,4 +28,35 @@ const buildButtonCustomId = (command: string, subcommand?: string) => {
   return `${command}__${subcommand}`;
 };
 
-export { replyToInteraction, parseButtonInteraction, buildButtonCustomId };
+const getUniqueValues = <T>(objArr: T[], key: keyof T) => {
+  const unique: any = [];
+
+  for (let i = 0; i < objArr.length; i++) {
+    const obj = objArr[i];
+    if (!unique.includes(obj[key])) {
+      unique.push(obj[key]);
+    }
+  }
+
+  return unique;
+};
+
+const getNumOccurences = <T>(objArr: T[], key: keyof T) => {
+  const unique: any = [];
+
+  for (let i = 0; i < objArr.length; i++) {
+    const obj = objArr[i];
+    if (!unique.includes(obj[key])) {
+      unique.push(obj[key]);
+    }
+  }
+
+  return unique;
+};
+
+export {
+  replyToInteraction,
+  parseButtonInteraction,
+  buildButtonCustomId,
+  getUniqueValues,
+};

@@ -5,14 +5,12 @@ import db from "../db";
 import { downloadById } from "./youtube";
 import Cache from "./cache";
 import PlayHistory from "./playHistory";
+import { getUniqueValues } from "./util";
 
-type AggregatedPlay = {
+type Play = { yt_id: string; user_id: string };
+
+type WeightedPlay = {
   yt_id: string;
-  num_plays: number;
-  title: string;
-};
-
-type WeightedAggregatedPlay = AggregatedPlay & {
   weight: number;
 };
 
@@ -22,7 +20,8 @@ class ShuffleManager {
   playHistory: PlayHistory;
   numMembersPlayedCache: Cache<number>;
   popularityOverTimeCache: Cache<number[]>;
-  playsCache: Cache<AggregatedPlay[]>;
+  playsCache: Cache<Play[]>;
+  numPlaysCache: Cache<number>;
   constructor(guild: Guild, channelId: string) {
     this.guild = guild;
     this.channelId = channelId;
@@ -32,7 +31,8 @@ class ShuffleManager {
     this.popularityOverTimeCache = new Cache<number[]>(
       `${this.guild.id}-popularity-over-time`
     );
-    this.playsCache = new Cache<AggregatedPlay[]>(`${this.guild.id}-plays`);
+    this.numPlaysCache = new Cache<number>(`${this.guild.id}-num-plays`);
+    this.playsCache = new Cache<Play[]>(`${this.guild.id}-plays`);
     this.playHistory = new PlayHistory(this.guild);
 
     this.getCurrentVoiceMembers();
@@ -47,71 +47,96 @@ class ShuffleManager {
     return usersIds;
   }
 
+  private groupByNumPlays(plays: Play[]) {
+    const uniqueIds = getUniqueValues(plays, "yt_id");
+
+    return uniqueIds.map((yt_id: string) => {
+      let numPlays = this.numPlaysCache.get(yt_id);
+      if (numPlays === null) {
+        numPlays = plays.filter((play) => play.yt_id === yt_id).length;
+        this.numPlaysCache.set(yt_id, numPlays);
+      }
+      return {
+        yt_id,
+        weight: numPlays,
+      };
+    }) as WeightedPlay[];
+  }
+
   private async getPlays() {
     const userIds = await this.getCurrentVoiceMembers();
-    const cacheKey = `plays-${userIds.join("-")}`;
-    if (this.playsCache.isValid(cacheKey)) {
-      return this.playsCache.get(cacheKey);
-    }
-    const plays = (await db("plays")
-      .where({ guild_id: this.guild.id })
-      .select("yt_id", "title")
-      .whereIn("user_id", userIds)
-      .count("yt_id as num_plays")
-      .groupBy("yt_id")) as AggregatedPlay[];
 
-    this.playsCache.set(cacheKey, plays);
+    const plays: Play[] = (
+      await Promise.all(
+        userIds.map(async (userId) => {
+          try {
+            const cachedPlays = this.playsCache.get(userId);
+            if (cachedPlays) {
+              for (let j = 0; j < cachedPlays.length; j++) {
+                return cachedPlays;
+              }
+            }
+
+            const playsForUser: Play[] = await db("plays")
+              .where({ guild_id: this.guild.id, user_id: userId })
+              .select("yt_id", "user_id");
+
+            this.playsCache.set(userId, playsForUser);
+
+            return playsForUser;
+          } catch (e) {
+            console.error(`Error fetching plays for user: `, userId);
+            return [];
+          }
+        })
+      )
+    ).flatMap((plays) => plays);
 
     return plays;
   }
 
-  private filterNotRecentlyPlayed(entries: WeightedAggregatedPlay[]) {
+  private filterNotRecentlyPlayed(entries: Play[]) {
     return entries.filter((play) => {
       return !this.playHistory.isInHistory(play.yt_id);
     });
   }
 
-  private async weightByNumMembersPlayedCount(
-    entries: WeightedAggregatedPlay[]
-  ) {
+  private async weightByNumMembersPlayedCount(entries: WeightedPlay[]) {
+    console.time("weightByNumMembersPlayedCount:fetch");
+
     const currentMembers = await this.getCurrentVoiceMembers();
-    const entriesPromises = entries.map(async (entry) => {
-      try {
-        const cacheKey = `${entry.yt_id}-${currentMembers.join("-")}`;
+    console.timeEnd("weightByNumMembersPlayedCount:fetch");
 
-        if (this.numMembersPlayedCache.isValid(cacheKey)) {
-          entry.weight += this.numMembersPlayedCache.get(cacheKey);
-          return entry;
-        }
+    console.time("weightByNumMembersPlayedCount:compute");
+    let iters = 0;
 
-        const count = await db("plays")
-          .where({ guild_id: this.guild.id })
-          .where({ yt_id: entry.yt_id })
-          .whereIn("user_id", currentMembers)
-          .count();
-        if (!count?.[0]?.["count(*)"]) return entry;
+    const alreadyCounted: Record<string, boolean> = {};
 
-        const numMembersPlayed = Number(count[0]["count(*)"]);
-        this.numMembersPlayedCache.set(cacheKey, numMembersPlayed);
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
 
-        entry.weight += numMembersPlayed;
-        return entry;
-      } catch (e) {
-        console.error(e);
-        return entry;
+      for (let j = 0; j < currentMembers.length; j++) {
+        const userId = currentMembers[j];
+        const key = `${entry.yt_id}-${userId}`;
+        iters++;
+        if (alreadyCounted[key]) continue;
+
+        alreadyCounted[key] = true;
+        entry.weight += 1;
       }
-    });
+    }
+    console.timeEnd("weightByNumMembersPlayedCount:compute");
+    console.log("Ran", iters, "iterations");
 
-    return Promise.all(entriesPromises);
+    return entries;
   }
 
-  private async weightByPopularityOverTime(entries: WeightedAggregatedPlay[]) {
-    const getPlayedAtTimestamps = async (entry: WeightedAggregatedPlay) => {
+  private async weightByPopularityOverTime(entries: WeightedPlay[]) {
+    const getPlayedAtTimestamps = async (entry: WeightedPlay) => {
       try {
         const cacheKey = String(entry.yt_id);
-        if (this.popularityOverTimeCache.isValid(cacheKey)) {
-          return this.popularityOverTimeCache.get(cacheKey);
-        }
+        const cachedValue = this.popularityOverTimeCache.get(cacheKey);
+        if (cachedValue) return cachedValue;
 
         const timestamps = (await db("plays")
           .where({ guild_id: this.guild.id })
@@ -149,13 +174,20 @@ class ShuffleManager {
 
   async getNext() {
     try {
+      console.time("getNext total");
+      console.time("getPlays");
       const plays = await this.getPlays();
-      let weightedPlays = plays.map((play) => {
-        return { ...play, weight: play.num_plays };
-      });
-      weightedPlays = this.filterNotRecentlyPlayed(weightedPlays);
+      console.timeEnd("getPlays");
+      console.time("offline operations");
+      let filteredPlays = this.filterNotRecentlyPlayed(plays);
+      let weightedPlays = this.groupByNumPlays(filteredPlays);
+      console.timeEnd("offline operations");
+      console.time("weightByNumMembersPlayedCount");
       weightedPlays = await this.weightByNumMembersPlayedCount(weightedPlays);
+      console.timeEnd("weightByNumMembersPlayedCount");
+      console.time("weightByPopularityOverTime");
       weightedPlays = await this.weightByPopularityOverTime(weightedPlays);
+      console.timeEnd("weightByPopularityOverTime");
 
       const weightsArr = weightedPlays.flatMap((play) =>
         Array(play.weight)
@@ -166,12 +198,16 @@ class ShuffleManager {
       if (!nextId) return;
       const entry = await this.downloadAsEntry(nextId);
       if (!entry) return;
-
+      const shuffleWeight = weightsArr.filter((id) => id === nextId).length;
+      const percent = (shuffleWeight / weightsArr.length) * 100;
       console.log(
-        "Shuffle weight: ",
-        weightsArr.filter((id) => id === nextId).length
+        "Shuffle weight:",
+        weightsArr.filter((id) => id === nextId).length,
+        percent,
+        "% chance"
       );
 
+      console.timeEnd("getNext total");
       return entry;
     } catch (e) {
       console.error(e);

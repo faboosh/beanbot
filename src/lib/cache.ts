@@ -14,6 +14,7 @@ class Cache<T> {
   }
 
   get(key: string) {
+    if (!this.isValid(key)) return null;
     return this.entries?.[key].data;
   }
 

@@ -119,6 +119,10 @@ const getLatestMessage = async (guild: Guild) => {
 
 const buildButtons = (player: PlaylistManager) => {
   return new ActionRowBuilder().addComponents(
+    // new ButtonBuilder()
+    // .setCustomId(buildButtonCustomId(commandName, Subcommands.Shuffle))
+    // .setLabel("🔀")
+    // .setStyle(ButtonStyle.Primary),
     player.playing
       ? new ButtonBuilder()
           .setCustomId(buildButtonCustomId(commandName, Subcommands.Pause))
@@ -131,6 +135,10 @@ const buildButtons = (player: PlaylistManager) => {
     new ButtonBuilder()
       .setCustomId(buildButtonCustomId(commandName, Subcommands.Skip))
       .setLabel("⏭️")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(buildButtonCustomId(commandName, Subcommands.Playing))
+      .setLabel("📝")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId(buildButtonCustomId(commandName, Subcommands.Leave))

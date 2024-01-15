@@ -21,11 +21,11 @@ const VideoDetailCache = new Cache<VideoDetails>("youtube-video-details");
 
 const downloadById = async (videoId: string) => {
   const yt = await Innertube.create();
-  let details: VideoDetails | undefined;
+  let details: VideoDetails | null;
   if (VideoDetailCache.isValid(videoId)) {
     details = VideoDetailCache.get(videoId);
   } else {
-    details = (await yt.getInfo(videoId)).page[0].video_details;
+    details = (await yt.getInfo(videoId)).page[0].video_details ?? null;
     if (details) VideoDetailCache.set(videoId, details);
   }
   if (!details) return;
