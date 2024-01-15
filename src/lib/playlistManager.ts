@@ -236,7 +236,10 @@ class PlaylistManager {
   private async downloadAsEntry(id: string) {
     const result = await downloadById(id);
     if (!result) return;
-    const audioResource = await createAudioResource(result.filePath);
+    const audioResource = await createAudioResource(result.filePath, {
+      inlineVolume: true,
+    });
+    // audioResource.volume?.setVolumeLogarithmic()
     const videoTitle = result.details.title;
     const videoId = result.details.id;
     const entry = {

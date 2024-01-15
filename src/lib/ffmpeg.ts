@@ -40,4 +40,44 @@ const getMetadata = (path: string) => {
   });
 };
 
-export { getMetadata };
+const getLoudness = (path: string) => {
+  return new Promise((resolve, reject) => {
+    const ffmpeg = spawn("ffmpeg", [
+      "-i",
+      path,
+      "-filter_complex",
+      "ebur128=peak=true",
+      "-f",
+      "null",
+      "-",
+    ]);
+
+    let output = "";
+    ffmpeg.stderr.on("data", (data) => {
+      output += data.toString();
+    });
+
+    ffmpeg.on("close", (code) => {
+      if (code !== 0) {
+        return reject(new Error(`FFmpeg exited with code ${code}`));
+      }
+
+      // Find all matches for Integrated Loudness
+      const matches = [
+        ...output.matchAll(
+          /Integrated loudness:\r\n\s+I:\s+(-?\d+\.?\d*) LUFS/gm
+        ),
+      ];
+
+      if (matches.length > 0) {
+        // Get the last match (the 2nd block of Integrated Loudness)
+        const lastMatch = matches[matches.length - 1];
+        resolve(Number(lastMatch[1]));
+      } else {
+        reject(new Error("Couldn't parse integrated loudness"));
+      }
+    });
+  });
+};
+
+export { getMetadata, getLoudness };
