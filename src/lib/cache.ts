@@ -44,12 +44,14 @@ class Cache<T> {
     if (!fs.existsSync(this.CACHE_DIR)) fs.mkdirSync(this.CACHE_DIR);
     if (this.writeTimeout) clearTimeout(this.writeTimeout);
     setTimeout(() => {
+      console.log(`Writing cache "${this.name}" to disk`);
       fs.writeFile(
         `${this.CACHE_DIR}/${this.name}.json`,
         JSON.stringify(this.entries),
         { encoding: "utf-8" },
         (err) => {
           if (err) console.error(err);
+          console.log(`Finished writing cache "${this.name}" to disk`);
         }
       );
     }, this.WRITE_DEBOUNCE_MS);
@@ -58,11 +60,14 @@ class Cache<T> {
   private restoreFromDisk() {
     const filePath = `${this.CACHE_DIR}/${this.name}.json`;
     if (!fs.existsSync(filePath)) return;
+    console.log(`Reading cache "${this.name}" to disk`);
+
     const json = fs.readFileSync(`${this.CACHE_DIR}/${this.name}.json`, {
       encoding: "utf8",
     });
     const data = JSON.parse(json);
     this.entries = data;
+    console.log(`Finished reading cache "${this.name}" to disk`);
   }
 }
 

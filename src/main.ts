@@ -43,7 +43,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // @ts-ignore
     await commands?.[command]?.execute(interaction);
   } catch (e) {
+    console.error(e);
     if (interaction.isRepliable())
-      interaction.reply({ content: "Something went HORRIBLY wrong" });
+      interaction.editReply({ content: "Something went HORRIBLY wrong" });
   }
 });

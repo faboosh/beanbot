@@ -54,9 +54,23 @@ const getNumOccurences = <T>(objArr: T[], key: keyof T) => {
   return unique;
 };
 
+const secondsToTimestamp = (seconds: number) => {
+  seconds = Math.round(seconds);
+  let minutes = Math.floor(seconds / 60);
+  let remainingSeconds = seconds % 60;
+
+  // Adding leading zero if minutes or seconds are less than 10
+  let formattedMinutes = minutes < 10 ? "0" + minutes : minutes;
+  let formattedSeconds =
+    remainingSeconds < 10 ? "0" + remainingSeconds : remainingSeconds;
+
+  return formattedMinutes + ":" + formattedSeconds;
+};
+
 export {
   replyToInteraction,
   parseButtonInteraction,
   buildButtonCustomId,
   getUniqueValues,
+  secondsToTimestamp,
 };

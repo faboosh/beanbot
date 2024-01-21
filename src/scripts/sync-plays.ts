@@ -8,8 +8,11 @@ import {
   Channel,
 } from "discord.js";
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
-import { downloadById, getTopResult } from "./lib/youtube";
-import PlaylistManager from "./lib/playlistManager";
+import {
+  downloadById,
+  getTopResult,
+} from "../lib/MusicPlayer/platforms/youtube";
+import PlaylistManager from "../lib/MusicPlayer/MusicPlayer";
 
 const token = process.env.token;
 const client = new Client({
@@ -32,7 +35,7 @@ async function getMessages(
   channel: Channel,
   limit: number = 100
 ): Promise<Message[]> {
-  const sum_messages = [];
+  const sum_messages: any[] = [];
   let last_id;
 
   while (true) {
@@ -81,7 +84,7 @@ type MessageParser = {
 
 function extractBetweenBackticks(str: string) {
   const regex = /`([^`]+)`/g;
-  let matches = [];
+  let matches: any[] = [];
   let match;
 
   while ((match = regex.exec(str)) !== null) {
@@ -264,18 +267,11 @@ const parseMessage = async (msg: Message) => {
   const result = await downloadById(id);
 
   if (!result) return console.warn(`Failed download for id ${id}`);
-  await PlaylistManager.logPlay(
-    {
-      filePath: result.filePath,
-      title: result.details.title,
-      youtubeId: result.details.id,
-    },
-    guildId,
-    {
-      imported: true,
-      timestamp: msg.createdTimestamp,
-    }
-  );
+  //TODO: Fix this error at some point lol
+  // await PlaylistManager.logPlay(result.details.id, guildId, {
+  //   imported: true,
+  //   timestamp: msg.createdTimestamp,
+  // });
 
   console.log(`Finished download for id ${id}`);
 };

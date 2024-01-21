@@ -1,6 +1,6 @@
 import { Innertube, Utils } from "youtubei.js";
 import * as fs from "fs";
-import Cache from "./cache";
+import Cache from "../../Cache";
 import { VideoDetails } from "youtubei.js/dist/src/parser/misc";
 
 function slugify(str: string) {
@@ -62,4 +62,10 @@ const getTopResult = async (query: string) => {
   return videoId;
 };
 
-export { getTopResult, downloadById, VideoDetailCache };
+const getThumbnail = async (youtubeId: string) => {
+  const result = await downloadById(youtubeId);
+  if (!result) return "";
+  return result.details.thumbnail[0].url;
+};
+
+export { getTopResult, downloadById, VideoDetailCache, getThumbnail };

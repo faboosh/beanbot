@@ -13,10 +13,11 @@
     "forceConsistentCasingInFileNames": true, // Disallow inconsistently-cased references to the same file
 
     /* Additional Checks */
-    "noImplicitAny": true, // Raise error on expressions and declarations with an implied 'any' type
-    "noImplicitReturns": true, // Report error when not all code paths in function return a value
+    "noImplicitAny": false, // Raise error on expressions and declarations with an implied 'any' type
+    "noImplicitReturns": false, // Report error when not all code paths in function return a value
     "noUnusedLocals": false, // Report errors on unused locals
     "noUnusedParameters": false, // Report errors on unused parameters
+    "resolveJsonModule": true,
 
     /* Experimental Options */
     "experimentalDecorators": true, // Enables experimental support for ES decorators

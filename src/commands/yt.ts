@@ -1,24 +1,19 @@
 import {
   SlashCommandBuilder,
-  InteractionResponse,
   ChatInputCommandInteraction,
   ButtonInteraction,
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
-  ComponentType,
-  Message,
-  InteractionCollector,
-  InteractionCollectorOptions,
   CacheType,
   Interaction,
   GuildMember,
   Guild,
-  Channel,
 } from "discord.js";
-import PlaylistManager from "../lib/playlistManager";
+import MusicPlayer from "../lib/MusicPlayer";
 import { buildButtonCustomId, parseButtonInteraction } from "../lib/util";
-import Cache from "../lib/cache";
+import Cache from "../lib/Cache";
+import { EmbedData, createEmbed } from "../lib/embed";
 
 const Subcommands = {
   Play: "play",
@@ -29,6 +24,7 @@ const Subcommands = {
   Playing: "playing",
   Stats: "stats",
   Shuffle: "shuffle",
+  Blame: "blame",
 };
 
 const commandName = "yt";
@@ -58,6 +54,13 @@ const data = new SlashCommandBuilder()
   )
   .addSubcommand((subcommand) =>
     subcommand.setName(Subcommands.Stats).setDescription("Play stats")
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName(Subcommands.Blame)
+      .setDescription(
+        "Display who has queued the currently playing song in the past"
+      )
   )
   .addSubcommand((subcommand) =>
     subcommand
@@ -91,7 +94,7 @@ const data = new SlashCommandBuilder()
       .setDescription("Currently playing audio")
   );
 
-const players: Record<string, PlaylistManager> = {};
+const players: Record<string, MusicPlayer> = {};
 
 const messageCache = new Cache<{
   channelId: string;
@@ -117,13 +120,9 @@ const getLatestMessage = async (guild: Guild) => {
   }
 };
 
-const buildButtons = (player: PlaylistManager) => {
+const buildButtons = (player: MusicPlayer) => {
   return new ActionRowBuilder().addComponents(
-    // new ButtonBuilder()
-    // .setCustomId(buildButtonCustomId(commandName, Subcommands.Shuffle))
-    // .setLabel("🔀")
-    // .setStyle(ButtonStyle.Primary),
-    player.playing
+    player.getPlaying()
       ? new ButtonBuilder()
           .setCustomId(buildButtonCustomId(commandName, Subcommands.Pause))
           .setLabel("⏸️")
@@ -166,12 +165,11 @@ const execute = async (interaction: Interaction): Promise<void> => {
   const voiceId = interaction.member.voice.channelId as string;
   const guild = interaction.guild;
 
-  if (!players[guild.id])
-    players[guild.id] = new PlaylistManager(guild, voiceId);
+  if (!players[guild.id]) players[guild.id] = new MusicPlayer(guild, voiceId);
 
   const player = players[guild.id];
 
-  if (voiceId !== player.channelId) {
+  if (voiceId !== player.getChannelId()) {
     console.log("Interaction not from same channel");
     await interaction.editReply({
       content: "You must be in the same voice channel to interact with the bot",
@@ -189,48 +187,37 @@ const execute = async (interaction: Interaction): Promise<void> => {
 
   if (!subcommand) return;
 
-  const messageText = await handleSubcommand(interaction, player, subcommand);
+  const embed = await handleSubcommand(interaction, player, subcommand);
 
-  const messageData = {
-    content: messageText,
+  const messageData: {
+    embeds: any;
+    components: any;
+  } = {
+    embeds: [],
     components: [buildButtons(player)] as any,
   };
-  // const message = await getLatestMessage(guild);
-  // console.log("message from cache", message);
-  // const message = null;
-  const reply = await interaction.editReply({
-    ...messageData,
-  });
-  // try {
-  //   if (message) {
-  //     await message.edit(messageData);
-  //   } else {
-  //     const reply = await interaction.editReply(messageData);
-  //     messageCache.set(guild.id, {
-  //       channelId: interaction.channelId,
-  //       messageId: reply.id,
-  //     });
-  //   }
-  // } catch (e) {
-  //   console.error(e);
-  //   interaction.editReply("Something broke :(");
-  // }
+
+  if (embed) {
+    messageData.embeds.push(createEmbed(embed));
+  }
+
+  await interaction.editReply(messageData);
 };
 
 const handleSubcommand = async (
   interaction:
     | ChatInputCommandInteraction<CacheType>
     | ButtonInteraction<CacheType>,
-  player: PlaylistManager,
+  player: MusicPlayer,
   subcommand: string
 ) => {
-  const nowPlaying = player.nowPlaying();
+  const nowPlaying = await player.nowPlaying();
 
   switch (subcommand) {
     case Subcommands.Play:
       if (!(interaction instanceof ChatInputCommandInteraction)) return;
       const query = interaction.options.getString("search");
-      if (!query) return "";
+      if (!query) return { title: "No query provided" } as EmbedData;
       const queryResponse = await player.queueBySearch(
         query,
         interaction.member?.user.id
@@ -238,19 +225,16 @@ const handleSubcommand = async (
       return queryResponse;
 
     case Subcommands.Skip:
-      const nextTrack = await player.skip(interaction.user.id);
-      return [
-        `### __Skipping...__`,
-        ...(nextTrack ? [`**Now playing:** ${nextTrack}`] : []),
-      ].join("\n");
+      return await player.skip(interaction.user.id);
 
     case Subcommands.Pause:
       player.pause();
-      return [`### Pausing...`, nowPlaying].join("\n");
+      return { title: "Pausing" };
 
     case Subcommands.Unpause:
       player.unpause();
-      return [`### Unpausing...`, nowPlaying].join("\n");
+      nowPlaying.title = "Unpausing";
+      return nowPlaying;
 
     case Subcommands.Stats:
       const stats = await player.stats();
@@ -261,27 +245,37 @@ const handleSubcommand = async (
       const option = interaction.options.getString("option");
       if (option === "enable") {
         player.setShuffle(true);
-        return ["### Enabling shuffle...", nowPlaying].join("\n");
+        nowPlaying.title = "Enabling shuffle";
+        return nowPlaying;
       }
       if (option === "disable") {
         player.setShuffle(false);
-        return ["### Disabling shuffle...", nowPlaying].join("\n");
+        nowPlaying.title = "Disable shuffle";
+        return nowPlaying;
       }
-      if (option === "status")
-        return player.shuffle ? "Shuffle is enabled" : "Shuffle is disabled";
-
-      return "";
+      if (option === "status") {
+        const title = player.getShuffleEnabled()
+          ? "Shuffle is enabled"
+          : "Shuffle is disabled";
+        return { title } as EmbedData;
+      }
 
     case Subcommands.Playing:
       return nowPlaying;
 
+    case Subcommands.Blame:
+      return await player.blame();
+
     case Subcommands.Leave:
       player.disconnect();
       interaction.guild?.id && delete players[interaction.guild.id];
-      return "### Leaving...";
+      return {
+        title: "Leaving",
+        description: "I will be back...",
+      } as EmbedData;
 
     default:
-      return "";
+      return {} as EmbedData;
   }
 };
 

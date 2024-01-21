@@ -1,5 +1,5 @@
 import { Guild } from "discord.js";
-import Cache from "./cache";
+import Cache from "../../Cache";
 
 class PlayHistory {
   cache: Cache<string>;
