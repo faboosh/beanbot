@@ -1,8 +1,8 @@
-/node_modules
-/dist
-/download
-/cache
-/temp
+*/node_modules
+*/dist
+backend/download
+backend/cache
+backend/temp
 *.env
 .env
 *.sqlite3
