@@ -10,7 +10,6 @@ import { authMiddleware } from "./middleware.js";
 import { getPlayer } from "../lib/MusicPlayer/MusicPlayer.js";
 import { search } from "../lib/MusicPlayer/platforms/youtube.js";
 import { getOrCreateMetadata } from "../lib/MusicPlayer/util/metadata.js";
-import type { IMusicPlayer } from "@shared/types.js";
 import cors from "cors";
 
 const start = () => {
@@ -26,25 +25,6 @@ const start = () => {
   });
   app.use(express.static(publicPath));
   app.use(cors());
-
-  const html = `
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Player Controls</title>
-      <script type="module" src="/main.js">
-    </head>
-    <body>
-      
-    </body>
-  </html>
-  `;
-
-  app.get("/", (req, res) => {
-    res.send(html);
-  });
 
   app.use("/api", authMiddleware);
 
@@ -147,6 +127,16 @@ const start = () => {
       return res.status(400).json({ detail: "No player instance found" });
     const user = await player.getUserDetails(id);
     return res.status(200).json(user);
+  });
+
+  app.get("*", (req, res) => {
+    // Ensure it's not an API request
+    if (!req.url.startsWith("/api/v1")) {
+      res.sendFile("index.html", { root: publicPath });
+    } else {
+      // Handle 404 for API routes or let your API router handle it
+      res.status(404).send("API route not found");
+    }
   });
 
   server.listen(port, () => {

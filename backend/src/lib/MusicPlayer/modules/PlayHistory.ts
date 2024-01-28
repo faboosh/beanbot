@@ -1,5 +1,6 @@
 import { Guild } from "discord.js";
 import Cache from "../../Cache.js";
+import { encrypt } from "../../crypto.js";
 
 class PlayHistory {
   cache: Cache<string>;
@@ -8,7 +9,7 @@ class PlayHistory {
 
   constructor(guild: Guild) {
     this.guild = guild;
-    this.cache = new Cache<string>(`${guild.id}-play-history`);
+    this.cache = new Cache<string>(`${encrypt(guild.id)}-play-history`);
     // Invalidate after 12 hours to keep from repeating
     this.cache.setInvalidateAfterMs(12 * 60 * 60 * 1000);
   }

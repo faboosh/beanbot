@@ -6,6 +6,8 @@ import type { Play } from "./InteractionService.js";
 import type VoiceConnectionManager from "./VoiceConnectionManager.js";
 import AudioResourceManager from "./AudioResourceManager.js";
 import type { PlaylistEntry } from "@shared/types.js";
+import { decrypt, encrypt } from "../../crypto.js";
+import InteractionService from "./InteractionService.js";
 
 type WeightedPlay = {
   play: Play;
@@ -16,6 +18,7 @@ class ShuffleManager {
   playHistory: PlayHistory;
   playsCache: Cache<Play[]>;
   voiceConnectionManager: VoiceConnectionManager;
+  interactionService: InteractionService;
 
   MIN_SONG_LEN_SECONDS = 60 * 1;
   IDEAL_SONG_LEN_SECONDS = 60 * 4.5;
@@ -30,62 +33,25 @@ class ShuffleManager {
   constructor(voiceConnectionManager: VoiceConnectionManager) {
     this.voiceConnectionManager = voiceConnectionManager;
     this.playsCache = new Cache<Play[]>(
-      `${this.voiceConnectionManager.getGuild().id}-plays`
+      `${encrypt(this.voiceConnectionManager.getGuild().id)}-plays`
     );
     this.playHistory = new PlayHistory(this.voiceConnectionManager.getGuild());
-
+    this.interactionService = new InteractionService(
+      this.voiceConnectionManager.getGuild().id
+    );
     this.getCurrentVoiceMembers();
 
     this.computeNextAndCache();
   }
 
   private async getCurrentVoiceMembers() {
-    return this.voiceConnectionManager.getCurrentVoiceMembers();
+    return (await this.voiceConnectionManager.getCurrentVoiceMembers()).map(
+      encrypt
+    );
   }
 
   private async getPlays() {
-    // console.time("getPlays");
-
-    const playsFromCache = this.playsCache.get(
-      this.voiceConnectionManager.getGuild().id
-    );
-    if (playsFromCache) {
-      // console.timeEnd("getPlays");
-      return playsFromCache;
-    }
-    const plays = (await db("plays")
-      .select("plays.yt_id", "title", "length_seconds", "lufs")
-      .select(db.raw("GROUP_CONCAT(DISTINCT user_id) as user_ids")) // Aggregate user_ids
-      .select(db.raw("GROUP_CONCAT(DISTINCT timestamp) as timestamps")) // Aggregate timestamps
-      .count("plays.yt_id as num_plays") // Count the number of plays for each yt_id
-      .where({ guild_id: this.voiceConnectionManager.getGuild().id })
-      .join("song_metadata", "plays.yt_id", "=", "song_metadata.yt_id")
-      .groupBy("plays.yt_id")
-      .orderBy("num_plays", "desc")) as {
-      yt_id: string;
-      title: string;
-      length_seconds: number;
-      lufs: number;
-      user_ids: string;
-      timestamps: string;
-      num_plays: number;
-    }[];
-
-    const parsedPlays = plays.map((play) => {
-      return {
-        ytId: play.yt_id,
-        title: play.title,
-        lengthSeconds: play.length_seconds,
-        lufs: play.lufs,
-        userIds: play.user_ids.split(","),
-        timestamps: play.timestamps.split(",").map((id) => Number(id)),
-        numPlays: play.num_plays,
-      } as Play;
-    });
-
-    this.playsCache.set(this.voiceConnectionManager.getGuild().id, parsedPlays);
-    // console.timeEnd("getPlays");
-    return parsedPlays;
+    return this.interactionService.getPlays();
   }
 
   private filterNotRecentlyPlayed(entries: Play[]) {
@@ -101,9 +67,15 @@ class ShuffleManager {
   private async filterNotInVoiceChannel(entries: Play[]) {
     // console.time("filterNotInVoiceChannel");
     const userIds = await this.getCurrentVoiceMembers();
+    console.log("userIds", userIds);
     const filteredEntries = entries.filter((play) => {
       return play.userIds.some((userId) => userIds.includes(userId));
     });
+    console.log(
+      "filterNotInVoiceChannel length after filter",
+      filteredEntries.length
+    );
+
     // console.timeEnd("filterNotInVoiceChannel");
     return filteredEntries;
   }

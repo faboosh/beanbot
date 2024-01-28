@@ -1,18 +1,16 @@
 // import { encode } from "@msgpack/msgpack";
 // import { readFileSync, readdirSync, writeFileSync } from "fs";
 
+import db from "../db.js";
+import InteractionService from "../lib/MusicPlayer/modules/InteractionService.js";
 import { getOrCreateMetadata } from "../lib/MusicPlayer/util/metadata.js";
-const youtubeId = "LqZpGYhyvr4";
+import { encrypt } from "../lib/crypto.js";
+const guildId = "555418700123996163";
 const main = async () => {
-  // const paths = readdirSync("./cache").map((file) => `./cache/${file}`);
-
-  // paths.forEach((path) => {
-  //   const json = readFileSync(path, { encoding: "utf-8" });
-  //   const data = JSON.parse(json);
-  //   writeFileSync(path.replace(".json", ".cache"), encode(data));
-  // });
-
-  console.log(await getOrCreateMetadata(youtubeId));
+  const interactionService = new InteractionService(guildId);
+  const plays = await interactionService.getPlays();
+  await db("plays").limit(10);
+  console.log(plays);
 
   process.exit(0);
 };

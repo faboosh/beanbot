@@ -8,6 +8,7 @@ import VoiceConnectionManager from "./modules/VoiceConnectionManager.js";
 import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
+import { decrypt } from "../crypto.js";
 
 export interface IMusicPlayer {
   queueBySearch(query: string, userId?: string): Promise<EmbedData>;
@@ -232,9 +233,8 @@ class MusicPlayer implements IMusicPlayer {
 
       return {
         title: "How did we end up here?",
-        description: `"${author} - ${title}" has been played by ${userIds[0].user_ids
-          .split(",")
-          .map((id) => `<@${id}>`)
+        description: `"${author} - ${title}" has been played by ${userIds
+          .map((id) => `<@${decrypt(id)}>`)
           .join(", ")}`,
         thumbnail: await getThumbnail(currentlyPlaying.id),
       };
@@ -253,7 +253,7 @@ class MusicPlayer implements IMusicPlayer {
       if (!userIds[0]) throw new Error("No results, this should never happen");
 
       return await Promise.all(
-        userIds[0].user_ids.split(",").map((id) => {
+        userIds.map((id) => {
           return this.guild.client.users.fetch(id);
         })
       );
@@ -264,7 +264,7 @@ class MusicPlayer implements IMusicPlayer {
   }
 
   async getUserDetails(id: string) {
-    return this.guild.client.users.fetch(id);
+    return this.guild.client.users.fetch(decrypt(id));
   }
 
   async stats(): Promise<EmbedData> {

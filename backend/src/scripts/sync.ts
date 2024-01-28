@@ -28,6 +28,8 @@ const rest = new REST().setToken(token);
       body: payload,
     })) as any;
 
+    console.log(data);
+
     console.log(
       `Successfully reloaded ${data.length} application (/) commands.`
     );

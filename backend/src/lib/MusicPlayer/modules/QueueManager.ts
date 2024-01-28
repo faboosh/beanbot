@@ -39,7 +39,7 @@ class QueueManager {
         ? await this.shuffleManager.getNext()
         : nextFromPlaylist;
 
-    this.currentlyShuffling = nextFromPlaylist !== playlistEntry;
+    this.currentlyShuffling = nextFromPlaylist?.id !== playlistEntry?.id;
 
     if (playlistEntry) {
       this.addHistory(playlistEntry);

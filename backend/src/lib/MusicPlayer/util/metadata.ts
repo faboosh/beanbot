@@ -70,6 +70,7 @@ const getMetadata = async (youtubeId: string): Promise<SongMetadata | null> => {
 };
 
 const getOrCreateMetadata = async (youtubeId: string) => {
+  console.log(youtubeId);
   console.time("Get/create metadata");
 
   const metadata = await getMetadata(youtubeId);

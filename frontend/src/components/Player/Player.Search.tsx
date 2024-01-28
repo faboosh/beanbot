@@ -6,6 +6,7 @@ import PlayerAPI from "../../api/player";
 import PlayerSearchResult, { TPlayerSearchResult } from "./Player.SearchResult";
 import PlayerSidebar from "./Player.Sidebar";
 import Loader from "../Loader";
+import { Link } from "react-router-dom";
 
 const SearchWrapper = styled.div`
   width: 100%;
@@ -67,6 +68,18 @@ const LogoText = styled.p`
     3px 3px 0px var(--gray-600), 4px 4px 0px var(--gray-700);
 `;
 
+const LinkWrapper = styled.p`
+  margin: 0;
+  padding: 0;
+  a {
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--gray-50);
+    font-size: 0.8rem;
+    text-decoration: none;
+  }
+`;
+
 const PlayerSearch = () => {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<TPlayerSearchResult[]>([]);
@@ -112,6 +125,9 @@ const PlayerSearch = () => {
             placeholder="Search"
           />
         </SearchInputWrapper>
+        <LinkWrapper>
+          <Link to="/privacy-policy">Privacy policy</Link>
+        </LinkWrapper>
       </TopBar>
       <SearchResults>
         <PlayerSidebar />

@@ -12,7 +12,7 @@ class Cache<T> {
 
   constructor(name: string) {
     this.name = name;
-    this.path = `${this.CACHE_DIR}/${this.name}.cache`;
+    this.path = `${this.CACHE_DIR}/${this.name.replace(/\//gim, "_")}.cache`;
     this.restoreFromDisk();
   }
 
