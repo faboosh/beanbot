@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "esnext", // Latest ECMAScript features
+    "module": "ESNext", // Use ECMAScript modules
+    "lib": ["dom", "esnext"], // Include DOM types for React and latest ES features
+    "declaration": true, // Generate .d.ts files for TypeScript types
+    "strict": true, // Enable all strict type-checking options
+    "esModuleInterop": true, // Enables compatibility with default imports from CommonJS modules
+    "moduleResolution": "node", // Use Node.js style module resolution
+    "jsx": "react", // Support for JSX (React)
+    "isolatedModules": true, // Ensures compatibility with transpilers (like Babel or esbuild used by Vite)
+    "skipLibCheck": true, // Skip type checking of all declaration files (*.d.ts)
+    "forceConsistentCasingInFileNames": true, // Ensure file names are consistent in case
+    "paths": {
+      "@frontend/*": ["../frontend/src/*"],
+      "@backend/*": ["../backend/src/*"]
+    }
+  },
+  "include": ["src/**/*"], // Adjust as necessary to include your source files
+  "exclude": ["node_modules", "dist", "**/*.spec.ts"] // Exclude unnecessary files
+}

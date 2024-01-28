@@ -1,9 +1,4 @@
-import {
-  Interaction,
-  Message,
-  ChatInputCommandInteraction,
-  ButtonInteraction,
-} from "discord.js";
+import { ChatInputCommandInteraction, ButtonInteraction } from "discord.js";
 
 const replyToInteraction = (
   interaction: ChatInputCommandInteraction,

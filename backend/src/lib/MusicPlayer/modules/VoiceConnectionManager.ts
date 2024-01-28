@@ -5,13 +5,13 @@ import {
   entersState,
   joinVoiceChannel,
 } from "@discordjs/voice";
-import { Guild } from "discord.js";
+import { Guild, VoiceChannel } from "discord.js";
 
 class VoiceConnectionManager {
-  voiceConnection?: VoiceConnection;
-  connected = false;
-  guild: Guild;
-  channelId: string;
+  private voiceConnection?: VoiceConnection;
+  private connected = false;
+  private guild: Guild;
+  private channelId: string;
   connectedStatusChangedCallback?: (connectedStatus: boolean) => void;
 
   constructor(guild: Guild, channelId: string) {
@@ -56,6 +56,27 @@ class VoiceConnectionManager {
 
   async ensureConnected() {
     if (!this.connected) await this.tryConnect();
+  }
+
+  getGuild() {
+    return this.guild
+  }
+
+  getVoiceChannelId() {
+    return this.channelId
+  }
+
+  async getCurrentVoiceMembers() {
+    const channel = (await this.guild.channels.fetch(
+      this.channelId
+    )) as VoiceChannel;
+
+    const usersIds = channel.members.map((member) => member.user.id);
+    return usersIds;
+  }
+
+  getVoiceConnection() {
+    return this.voiceConnection
   }
 }
 

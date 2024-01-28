@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "swc src -d dist",
-    "start": "npm run build && node ./dist/main.js",
+    "start": "bun run build && node ./dist/main.js",
     "api": "npm run build && node ./dist/api/main.js",
     "sync": "npm run build && node ./dist/scripts/sync.js",
     "sandbox": "npm run build && node ./dist/scripts/sandbox.js",
@@ -25,6 +25,7 @@
     "@msgpack/msgpack": "^3.0.0-beta2",
     "@spotify/web-api-ts-sdk": "^1.1.2",
     "axios": "^1.6.5",
+    "cors": "^2.8.5",
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "dotenv-esm": "^16.0.3-4",

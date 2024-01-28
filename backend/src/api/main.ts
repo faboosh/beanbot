@@ -10,6 +10,8 @@ import { authMiddleware } from "./middleware.js";
 import { getPlayer } from "../lib/MusicPlayer/MusicPlayer.js";
 import { search } from "../lib/MusicPlayer/platforms/youtube.js";
 import { getOrCreateMetadata } from "../lib/MusicPlayer/util/metadata.js";
+import type { IMusicPlayer } from "@shared/types.js";
+import cors from "cors";
 
 const start = () => {
   const app = express();
@@ -18,11 +20,12 @@ const start = () => {
   const server = createServer(app);
   const io = new Server(server, {
     cors: {
-      origin: "http://localhost:5173", // Replace with your frontend's URL
+      origin: "*", // Replace with your frontend's URL
       methods: ["GET", "POST"],
     },
   });
   app.use(express.static(publicPath));
+  app.use(cors());
 
   const html = `
   <!DOCTYPE html>
@@ -68,10 +71,10 @@ const start = () => {
         return res.status(400).json({ detail: "Invalid action" });
     }
 
-    return res.status(200);
+    return res.status(200).json({ detail: "OK" });
   });
 
-  app.post("/api/v1/queue/:id", (req, res) => {
+  app.post("/api/v1/queue/:id", async (req, res) => {
     if (!req?.user) return res.status(401).json({ detail: "Not authorized" });
 
     const id = req.params.id;
@@ -79,8 +82,21 @@ const start = () => {
 
     if (!player)
       return res.status(400).json({ detail: "No player instance found" });
+    await getOrCreateMetadata(id);
     player.queueById(id, req.user.userId);
-    return res.status(200);
+    return res.status(200).json({ detail: "OK" });
+  });
+
+  app.delete("/api/v1/queue/:id", (req, res) => {
+    if (!req?.user) return res.status(401).json({ detail: "Not authorized" });
+
+    const id = req.params.id;
+    const player = getPlayer(req.user.guildId);
+
+    if (!player)
+      return res.status(400).json({ detail: "No player instance found" });
+    player.removeFromQueue(id);
+    return res.status(200).json({ detail: "OK" });
   });
 
   app.get("/api/v1/search", async (req, res) => {
@@ -109,6 +125,30 @@ const start = () => {
     }
   });
 
+  app.get("/api/v1/videos/:id/played-by", async (req, res) => {
+    if (!req?.user) return res.status(401).json({ detail: "Not authorized" });
+
+    const id = req.params.id;
+    const player = getPlayer(req.user.guildId);
+
+    if (!player)
+      return res.status(400).json({ detail: "No player instance found" });
+    const user = await player.getUsersWhoPlayed(id);
+    return res.status(200).json(user);
+  });
+
+  app.get("/api/v1/users/:id", async (req, res) => {
+    if (!req?.user) return res.status(401).json({ detail: "Not authorized" });
+
+    const id = req.params.id;
+    const player = getPlayer(req.user.guildId);
+
+    if (!player)
+      return res.status(400).json({ detail: "No player instance found" });
+    const user = await player.getUserDetails(id);
+    return res.status(200).json(user);
+  });
+
   server.listen(port, () => {
     console.log(`API running on port ${port}`);
   });
@@ -122,6 +162,7 @@ const start = () => {
       const { guildId, userId } = await decodeJWT(token as string);
       const state = getOrCreatePlayerState(guildId);
       socket.join(guildId);
+      console.log(`${userId} connected`);
       io.to(guildId).emit("player-data", state.state);
 
       off = state.onChange((state) => {

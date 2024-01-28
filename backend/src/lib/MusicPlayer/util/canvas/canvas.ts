@@ -138,7 +138,7 @@ const generatePlayingCard = (
   elapsedSeconds: number = 60,
   totalSeconds: number = 350
 ): Promise<string> => {
-  console.time("generate image");
+  console.time("Generate image");
   if (!existsSync(TMP_DIR)) mkdirSync(TMP_DIR);
   const w = 1000;
   const h = 200;
@@ -225,8 +225,8 @@ const generatePlayingCard = (
       .write(outPath, async (err) => {
         await cleanupTemp();
         if (err) reject(err);
-        console.log("Composite image created:", outPath);
-        console.timeEnd("generate image");
+        // console.log("Composite image created:", outPath);
+        console.timeEnd("Generate image");
 
         resolve(outPath);
       });

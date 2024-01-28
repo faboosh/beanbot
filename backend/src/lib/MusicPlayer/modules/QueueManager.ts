@@ -1,21 +1,25 @@
-import { Guild } from "discord.js";
 import MusicPlayerState, { getOrCreatePlayerState } from "../state.js";
 import { getOrCreateMetadata } from "../util/metadata.js";
 import ShuffleManager from "./ShuffleManager.js";
 import { downloadById } from "../platforms/youtube.js";
+import type VoiceConnectionManager from "./VoiceConnectionManager.js";
+import type { PlaylistEntry } from "@shared/types.js";
+import { stringify } from "querystring";
 
 class QueueManager {
   private shuffleManager: ShuffleManager;
   private shuffle = true;
-  private playlist: string[] = [];
-  private currentlyPlaying: string | null = null;
+  private playlist: PlaylistEntry[] = [];
+  private currentlyPlaying: PlaylistEntry | null = null;
   private currentlyShuffling = false;
-  private playHistory: string[] = [];
+  private playHistory: PlaylistEntry[] = [];
   private playerState: MusicPlayerState;
 
-  constructor(guild: Guild, channelId: string) {
-    this.shuffleManager = new ShuffleManager(guild, channelId);
-    this.playerState = getOrCreatePlayerState(guild.id);
+  constructor(voiceConnectionManager: VoiceConnectionManager) {
+    this.shuffleManager = new ShuffleManager(voiceConnectionManager);
+    this.playerState = getOrCreatePlayerState(
+      voiceConnectionManager.getGuild().id
+    );
   }
 
   private getNextFromPlaylist() {
@@ -23,9 +27,9 @@ class QueueManager {
     return next;
   }
 
-  private addHistory(youtubeId: string) {
-    this.playHistory.push(youtubeId);
-    this.shuffleManager.playHistory.add(youtubeId);
+  private addHistory(entry: PlaylistEntry) {
+    this.playHistory.push(entry);
+    this.shuffleManager.playHistory.add(entry.id);
   }
 
   async getNext() {
@@ -42,9 +46,9 @@ class QueueManager {
       this.currentlyPlaying = playlistEntry;
       this.playerState.setState("currentlyPlaying", this.currentlyPlaying);
 
-      getOrCreateMetadata(playlistEntry).then(async (metadata) => {
+      getOrCreateMetadata(playlistEntry.id).then(async (metadata) => {
         try {
-          const youtubeData = await downloadById(playlistEntry);
+          const youtubeData = await downloadById(playlistEntry.id);
           this.playerState.setState(
             "thumbnail",
             youtubeData?.details.thumbnail[0].url ?? ""
@@ -74,8 +78,13 @@ class QueueManager {
     return this.playlist;
   }
 
-  addToPlaylist(youtubeId: string) {
-    this.playlist.push(youtubeId);
+  addToPlaylist(entry: PlaylistEntry) {
+    this.playlist.push(entry);
+    this.playerState.setState("playlist", this.playlist);
+  }
+
+  removeFromPlaylist(youtubeId: string) {
+    this.playlist = this.playlist.filter((entry) => entry.id !== youtubeId);
     this.playerState.setState("playlist", this.playlist);
   }
 

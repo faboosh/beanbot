@@ -6,14 +6,15 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ActionRowBuilder,
-  CacheType,
-  Interaction,
   GuildMember,
   Guild,
 } from "discord.js";
+
+import type { CacheType, Interaction } from "discord.js";
 import { buildButtonCustomId, parseButtonInteraction } from "../lib/util.js";
 import Cache from "../lib/Cache.js";
-import { EmbedData, createEmbed } from "../lib/embed.js";
+import { createEmbed } from "../lib/embed.js";
+import type { EmbedData } from "../lib/embed.js";
 import MusicPlayer, {
   destroyPlayer,
   getOrCreatePlayer,

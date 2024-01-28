@@ -3,6 +3,7 @@
 backend/download
 backend/cache
 backend/temp
+backend/images
 *.env
 .env
 *.sqlite3

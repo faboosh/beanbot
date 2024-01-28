@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700&display=swap');
+
+
 :root {
   --scaling: 1.35;
   font-size: calc(var(--scaling) * 16px);
@@ -22,7 +25,7 @@ body {
   padding: 0;
   background: var(--surface-canvas);
   color: var(--text-primary);
-  font-family: 'Ubuntu Mono', monospace;
+  font-family: 'Titillium Web', sans-serif;
 }
 
 body {
@@ -87,7 +90,7 @@ button {
   background: var(--btn-bg);
   /* border-radius: var(--space-1); */
   cursor: pointer;
-  font-family: 'Ubuntu Mono', monospace;
+  font-family: 'Titillium Web', sans-serif;
   font-size: inherit;
 }
 
@@ -115,7 +118,7 @@ button:focus, button:active {
 }
 
 input {
-  font-family: 'Ubuntu Mono', monospace;
+  font-family: 'Titillium Web', sans-serif;
 }
 
 input:focus {

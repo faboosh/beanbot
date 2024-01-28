@@ -1,14 +1,5 @@
 import State from "@faboosh/direct-wire-js/dist/state.js";
-import type { SongMetadata } from "./util/metadata.js";
-
-type PlayerState = {
-  playing: boolean;
-  currentlyPlaying: string | null;
-  currentSongStartedAtTs: number;
-  playlist: string[];
-  currentSongMetadata: SongMetadata | null;
-  thumbnail: string;
-};
+import type { PlayerState } from "@shared/types";
 
 class MusicPlayerState extends State {
   state: PlayerState = {
@@ -18,6 +9,7 @@ class MusicPlayerState extends State {
     currentSongStartedAtTs: 0,
     currentSongMetadata: null,
     thumbnail: "",
+    seek: 0,
   };
 
   setState<K extends keyof PlayerState>(key: K, val: PlayerState[K]) {

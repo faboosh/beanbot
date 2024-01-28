@@ -16,7 +16,11 @@
     "module": "ESNext",
     "noEmit": true,
     /* If your code doesn't run in the DOM: */
-    "lib": ["es2022"]
+    "lib": ["es2022"],
+    "paths": {
+      "@shared/*": ["../shared/src/*"],
+      "@backend/*": ["../backend/src/*"]
+    }
   },
   "include": [
     "src/**/*.ts" // Include all TypeScript files in src folder

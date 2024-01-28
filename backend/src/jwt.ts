@@ -9,10 +9,14 @@ type JWTData = {
 };
 
 const generateJWT = (guildId: string, userId: string) => {
-  return jwt.sign({ guildId, userId }, secret, { expiresIn: "24h" });
+  const iat = Math.floor(Date.now() / 1000); // current time in seconds since epoch
+  const exp = iat + 24 * 60 * 60; // 24 hours from now
+  return jwt.sign({ guildId, userId, iat, exp }, secret);
 };
 
 const decodeJWT = (token: string): JWTData => {
+  console.log(token);
+  console.log(Date.now());
   const decoded = jwt.decode(token);
   if (!decoded || !jwt.verify(token, secret)) throw new Error("Invalid JWT");
 

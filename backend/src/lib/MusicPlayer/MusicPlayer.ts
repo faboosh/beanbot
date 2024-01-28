@@ -9,7 +9,32 @@ import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
 
-class MusicPlayer {
+export interface IMusicPlayer {
+  queueBySearch(query: string, userId?: string): Promise<EmbedData>;
+  queueById(youtubeId: string, userId?: string): Promise<void>;
+  removeFromQueue(youtubeId: string): Promise<void>;
+
+  skip(userId: string): Promise<EmbedData>;
+  pause(): void;
+  unpause(): void;
+  setShuffle(shuffle: boolean): void;
+
+  nowPlaying(): Promise<EmbedData>;
+
+  blame(): Promise<EmbedData>;
+
+  stats(): Promise<EmbedData>;
+
+  getPlaying(): void;
+
+  disconnect(): void;
+
+  getShuffleEnabled(): boolean;
+
+  getChannelId(): string;
+}
+
+class MusicPlayer implements IMusicPlayer {
   private guild: Guild;
   private channelId: string;
 
@@ -17,6 +42,7 @@ class MusicPlayer {
   private playbackController: PlaybackController;
   private voiceConnectionManager: VoiceConnectionManager;
   private queueManager: QueueManager;
+  private disconnectInterval;
 
   constructor(guild: Guild, channelId: string) {
     this.guild = guild;
@@ -27,18 +53,29 @@ class MusicPlayer {
       this.channelId
     );
     this.playbackController = new PlaybackController(this.guild.id);
-    this.queueManager = new QueueManager(guild, channelId);
+    this.queueManager = new QueueManager(this.voiceConnectionManager);
 
     this.voiceConnectionManager.onConnectedStatusChanged((connected) => {
       if (connected)
         this.playbackController.connect(
-          this.voiceConnectionManager.voiceConnection
+          this.voiceConnectionManager.getVoiceConnection()
         );
     });
 
     this.playbackController.onLongIdle(() => {
       this.playNext();
     });
+
+    this.disconnectInterval = setInterval(() => {
+      this.checkMembersConnected();
+    }, 60 * 1000);
+  }
+
+  private async checkMembersConnected() {
+    const userIds = await this.voiceConnectionManager.getCurrentVoiceMembers();
+    if (!userIds.length) {
+      this.disconnect();
+    }
   }
 
   private async playNext() {
@@ -49,7 +86,7 @@ class MusicPlayer {
 
     try {
       const audioResource = await AudioResourceManager.createAudioResource(
-        playlistEntry
+        playlistEntry.id
       );
       if (!audioResource) throw new Error("Could not create audio resource");
 
@@ -61,13 +98,20 @@ class MusicPlayer {
     }
   }
 
+  private getCurrentlyPlaying() {
+    return this.queueManager.getCurrentlyPlaying();
+  }
+
   async queueBySearch(query: string, userId?: string): Promise<EmbedData> {
     const currentlyPlaying = this.getCurrentlyPlaying();
     const currentlyShuffling = this.queueManager.getCurrentlyShuffling();
 
     const id = await getTopResult(query);
     if (!id) return { title: "Video not found" };
-    this.queueManager.addToPlaylist(id);
+    this.queueManager.addToPlaylist({
+      id,
+      userId: userId ?? null,
+    });
     if (!currentlyPlaying || currentlyShuffling) await this.playNext();
     this.interactionService.logPlay(id, { userId });
     const { title, author } = await getTitleAuthor(id);
@@ -79,8 +123,22 @@ class MusicPlayer {
   }
 
   async queueById(youtubeId: string, userId: string) {
-    this.queueManager.addToPlaylist(youtubeId);
+    AudioResourceManager.createAudioResource(youtubeId)
+      .then((audioResource) =>
+        console.log(`created audio resource for "${youtubeId}"`, audioResource)
+      )
+      .catch((err) =>
+        console.error(`failed audio resource for "${youtubeId}"`, err)
+      );
+    this.queueManager.addToPlaylist({
+      id: youtubeId,
+      userId: userId,
+    });
     this.interactionService.logPlay(youtubeId, { userId });
+  }
+
+  async removeFromQueue(youtubeId: string) {
+    this.queueManager.removeFromPlaylist(youtubeId);
   }
 
   async skip(userId: string): Promise<EmbedData> {
@@ -89,7 +147,7 @@ class MusicPlayer {
     if (currentlyPlaying) {
       try {
         await this.interactionService.logSkip({
-          yt_id: currentlyPlaying,
+          yt_id: currentlyPlaying.id,
           user_id: userId,
           timestamp: Date.now(),
         });
@@ -101,7 +159,7 @@ class MusicPlayer {
     currentlyPlaying = this.getCurrentlyPlaying();
     if (!currentlyPlaying) return { title: "Failed to get next song" };
 
-    const { title, author } = await getTitleAuthor(currentlyPlaying);
+    const { title, author } = await getTitleAuthor(currentlyPlaying.id);
     return {
       title: "Skipping",
       fields: [
@@ -110,7 +168,7 @@ class MusicPlayer {
           value: `${author} - ${title}`,
         },
       ],
-      thumbnail: await getThumbnail(currentlyPlaying),
+      thumbnail: await getThumbnail(currentlyPlaying.id),
     };
   }
 
@@ -126,10 +184,6 @@ class MusicPlayer {
     this.queueManager.setShuffle(shuffle);
   }
 
-  private getCurrentlyPlaying() {
-    return this.queueManager.getCurrentlyPlaying();
-  }
-
   async nowPlaying(): Promise<EmbedData> {
     const currentlyPlaying = this.getCurrentlyPlaying();
 
@@ -137,12 +191,12 @@ class MusicPlayer {
       if (currentlyPlaying) {
         const elapsedSeconds =
           this.playbackController.getSecondsSinceStartedPlaying();
-        const totalSeconds = (await getOrCreateMetadata(currentlyPlaying))
+        const totalSeconds = (await getOrCreateMetadata(currentlyPlaying.id))
           ?.length_seconds;
         if (!totalSeconds)
           return { title: "Something went wrong fetching song data" };
         const filePath = await generatePlayingCard(
-          currentlyPlaying,
+          currentlyPlaying.id,
           elapsedSeconds,
           totalSeconds
         );
@@ -169,12 +223,12 @@ class MusicPlayer {
         };
 
       const userIds = await this.interactionService.getUserIdsWhoPlayed(
-        currentlyPlaying
+        currentlyPlaying.id
       );
 
       if (!userIds[0]) throw new Error("No results, this should never happen");
 
-      const { title, author } = await getTitleAuthor(currentlyPlaying);
+      const { title, author } = await getTitleAuthor(currentlyPlaying.id);
 
       return {
         title: "How did we end up here?",
@@ -182,12 +236,35 @@ class MusicPlayer {
           .split(",")
           .map((id) => `<@${id}>`)
           .join(", ")}`,
-        thumbnail: await getThumbnail(currentlyPlaying),
+        thumbnail: await getThumbnail(currentlyPlaying.id),
       };
     } catch (e) {
       console.error(e);
       return { title: "Something bwoke UwU" };
     }
+  }
+
+  async getUsersWhoPlayed(youtubeId: string) {
+    try {
+      const userIds = await this.interactionService.getUserIdsWhoPlayed(
+        youtubeId
+      );
+
+      if (!userIds[0]) throw new Error("No results, this should never happen");
+
+      return await Promise.all(
+        userIds[0].user_ids.split(",").map((id) => {
+          return this.guild.client.users.fetch(id);
+        })
+      );
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  }
+
+  async getUserDetails(id: string) {
+    return this.guild.client.users.fetch(id);
   }
 
   async stats(): Promise<EmbedData> {
@@ -226,7 +303,9 @@ class MusicPlayer {
   }
 
   disconnect() {
+    clearInterval(this.disconnectInterval);
     this.voiceConnectionManager.destroy();
+    destroyPlayer(this.voiceConnectionManager.getGuild());
   }
 
   getShuffleEnabled() {

@@ -3,7 +3,7 @@ import { closest, distance } from "fastest-levenshtein";
 import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import type { Track } from "@spotify/web-api-ts-sdk";
 import { downloadById } from "./youtube.js";
-import type { SongMetadata } from "../util/metadata.js";
+import type { SongMetadata } from "@shared/types.js";
 
 const clientID = process.env.spotify_client_id;
 const clientSecret = process.env.spotify_client_secret;
@@ -133,6 +133,10 @@ const buildSongMetadata = (
     yt_id: youtubeData.details.id,
     yt_title: youtubeData.details.title,
     yt_author: youtubeData.details.author,
+    spotify_author: null,
+    spotify_title: null,
+    length_seconds: null,
+    lufs: null,
   };
 
   if (spotifyMatch) {

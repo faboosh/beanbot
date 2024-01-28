@@ -2,7 +2,10 @@ import { Guild, VoiceChannel } from "discord.js";
 import db from "../../../db.js";
 import Cache from "../../Cache.js";
 import PlayHistory from "./PlayHistory.js";
-import { Play } from "./InteractionService.js";
+import type { Play } from "./InteractionService.js";
+import type VoiceConnectionManager from "./VoiceConnectionManager.js";
+import AudioResourceManager from "./AudioResourceManager.js";
+import type { PlaylistEntry } from "@shared/types.js";
 
 type WeightedPlay = {
   play: Play;
@@ -10,10 +13,9 @@ type WeightedPlay = {
 };
 
 class ShuffleManager {
-  guild: Guild;
-  channelId: string;
   playHistory: PlayHistory;
   playsCache: Cache<Play[]>;
+  voiceConnectionManager: VoiceConnectionManager;
 
   MIN_SONG_LEN_SECONDS = 60 * 1;
   IDEAL_SONG_LEN_SECONDS = 60 * 4.5;
@@ -23,30 +25,32 @@ class ShuffleManager {
   POPULARITY_OVER_TIME_MULTIPLIER = 4;
   IDEAL_SONG_LEN_MULTIPLIER = 10;
 
-  constructor(guild: Guild, channelId: string) {
-    this.guild = guild;
-    this.channelId = channelId;
-    this.playsCache = new Cache<Play[]>(`${this.guild.id}-plays`);
-    this.playHistory = new PlayHistory(this.guild);
+  private nextId: string | null = null;
+
+  constructor(voiceConnectionManager: VoiceConnectionManager) {
+    this.voiceConnectionManager = voiceConnectionManager;
+    this.playsCache = new Cache<Play[]>(
+      `${this.voiceConnectionManager.getGuild().id}-plays`
+    );
+    this.playHistory = new PlayHistory(this.voiceConnectionManager.getGuild());
 
     this.getCurrentVoiceMembers();
+
+    this.computeNextAndCache();
   }
 
   private async getCurrentVoiceMembers() {
-    const channel = (await this.guild.channels.fetch(
-      this.channelId
-    )) as VoiceChannel;
-
-    const usersIds = channel.members.map((member) => member.user.id);
-    return usersIds;
+    return this.voiceConnectionManager.getCurrentVoiceMembers();
   }
 
   private async getPlays() {
-    console.time("getPlays");
+    // console.time("getPlays");
 
-    const playsFromCache = this.playsCache.get(this.guild.id);
+    const playsFromCache = this.playsCache.get(
+      this.voiceConnectionManager.getGuild().id
+    );
     if (playsFromCache) {
-      console.timeEnd("getPlays");
+      // console.timeEnd("getPlays");
       return playsFromCache;
     }
     const plays = (await db("plays")
@@ -54,7 +58,7 @@ class ShuffleManager {
       .select(db.raw("GROUP_CONCAT(DISTINCT user_id) as user_ids")) // Aggregate user_ids
       .select(db.raw("GROUP_CONCAT(DISTINCT timestamp) as timestamps")) // Aggregate timestamps
       .count("plays.yt_id as num_plays") // Count the number of plays for each yt_id
-      .where({ guild_id: this.guild.id })
+      .where({ guild_id: this.voiceConnectionManager.getGuild().id })
       .join("song_metadata", "plays.yt_id", "=", "song_metadata.yt_id")
       .groupBy("plays.yt_id")
       .orderBy("num_plays", "desc")) as {
@@ -79,33 +83,33 @@ class ShuffleManager {
       } as Play;
     });
 
-    this.playsCache.set(this.guild.id, parsedPlays);
-    console.timeEnd("getPlays");
+    this.playsCache.set(this.voiceConnectionManager.getGuild().id, parsedPlays);
+    // console.timeEnd("getPlays");
     return parsedPlays;
   }
 
   private filterNotRecentlyPlayed(entries: Play[]) {
-    console.time("filterNotRecentlyPlayed");
+    // console.time("filterNotRecentlyPlayed");
     const filteredEntries = entries.filter((play) => {
       return !this.playHistory.isInHistory(play.ytId);
     });
-    console.timeEnd("filterNotRecentlyPlayed");
+    // console.timeEnd("filterNotRecentlyPlayed");
 
     return filteredEntries;
   }
 
   private async filterNotInVoiceChannel(entries: Play[]) {
-    console.time("filterNotInVoiceChannel");
+    // console.time("filterNotInVoiceChannel");
     const userIds = await this.getCurrentVoiceMembers();
     const filteredEntries = entries.filter((play) => {
       return play.userIds.some((userId) => userIds.includes(userId));
     });
-    console.timeEnd("filterNotInVoiceChannel");
+    // console.timeEnd("filterNotInVoiceChannel");
     return filteredEntries;
   }
 
   private filterTooLongOrShort(entries: Play[]) {
-    console.time("filterTooLongOrShort");
+    // console.time("filterTooLongOrShort");
 
     const filteredEntries = entries.filter((play) => {
       if (play.lengthSeconds === null) return true;
@@ -114,12 +118,12 @@ class ShuffleManager {
         play.lengthSeconds < this.MAX_SONG_LEN_SECONDS
       );
     });
-    console.timeEnd("filterTooLongOrShort");
+    // console.timeEnd("filterTooLongOrShort");
     return filteredEntries;
   }
 
   private weightByNumMembersPlayedCount(entries: WeightedPlay[]) {
-    console.time("weightByNumMembersPlayedCount");
+    // console.time("weightByNumMembersPlayedCount");
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       entry.weight.push({
@@ -127,12 +131,12 @@ class ShuffleManager {
         key: "number of members played",
       });
     }
-    console.timeEnd("weightByNumMembersPlayedCount");
+    // console.timeEnd("weightByNumMembersPlayedCount");
     return entries;
   }
 
   private weightByPopularityOverTime(entries: WeightedPlay[]) {
-    console.time("weightByPopularityOverTime");
+    // console.time("weightByPopularityOverTime");
 
     const now = Date.now();
     const oneYear = 365 * 24 * 60 * 60 * 1000;
@@ -155,13 +159,13 @@ class ShuffleManager {
         key: "popularity over time",
       });
     }
-    console.timeEnd("weightByPopularityOverTime");
+    // console.timeEnd("weightByPopularityOverTime");
 
     return entries;
   }
 
   private weightBySongLength(entries: WeightedPlay[]) {
-    console.time("weightBySongLength");
+    // console.time("weightBySongLength");
 
     function linearFalloff(
       value: number,
@@ -196,14 +200,46 @@ class ShuffleManager {
         key: "song length",
       });
     }
-    console.timeEnd("weightBySongLength");
+    // console.timeEnd("weightBySongLength");
 
     return entries;
   }
 
-  async getNext() {
+  private computeNextAndCache() {
+    this.computeNext().then((nextId) => {
+      this.nextId = nextId;
+      if (nextId) {
+        AudioResourceManager.createAudioResource(nextId)
+          .then(() => console.log(`Created audio resource for "${nextId}"`))
+          .catch((e) =>
+            console.error(`Failed to create audio resource for "${nextId}"`, e)
+          );
+      }
+    });
+  }
+
+  async getNext(): Promise<PlaylistEntry> {
+    if (this.nextId) {
+      const nextId = this.nextId;
+      this.nextId = null;
+      this.computeNextAndCache();
+      return {
+        id: nextId,
+        userId: null,
+      };
+    }
+
+    const next = await this.computeNext();
+    this.computeNextAndCache();
+    return {
+      id: String(next),
+      userId: null,
+    };
+  }
+
+  private async computeNext() {
     try {
-      console.time("total");
+      console.time("Compute next shuffle");
       const plays = await this.getPlays();
       let filteredPlays = this.filterNotRecentlyPlayed(plays);
       filteredPlays = this.filterTooLongOrShort(filteredPlays);
@@ -218,33 +254,35 @@ class ShuffleManager {
       weightedPlays = this.weightByPopularityOverTime(weightedPlays);
       weightedPlays = this.weightBySongLength(weightedPlays);
 
-      console.time("Compute next");
+      // console.time("Compute next");
       const weightsArr = weightedPlays.flatMap((entry) =>
         Array(entry.weight.reduce((acc, val) => acc + val.val, 0))
           .fill(null)
           .map(() => entry.play.ytId)
       );
       const nextId = weightsArr[Math.round(Math.random() * weightsArr.length)];
-      const selected = weightedPlays.filter(
-        (entry) => entry.play.ytId === nextId
-      )?.[0];
-      console.timeEnd("Compute next");
-
       if (!nextId) return null;
-      const shuffleWeight = weightsArr.filter((id) => id === nextId).length;
+      // const selected = weightedPlays.filter(
+      //   (entry) => entry.play.ytId === nextId
+      // )?.[0];
+      // console.timeEnd("Compute next");
 
-      const percent = (shuffleWeight / weightsArr.length) * 100;
-      console.log("Shuffle weight:", shuffleWeight);
-      console.log(`${percent}% chance`);
-      console.log("Breakdown: ");
-      if (selected) {
-        selected.weight.forEach((wt) => {
-          console.log(`${wt.key}:`, wt.val);
-        });
-      }
+      // const shuffleWeight = weightsArr.filter((id) => id === nextId).length;
+
+      // const percent = (shuffleWeight / weightsArr.length) * 100;
+      // console.log("Shuffle weight:", shuffleWeight);
+      // console.log(`${percent}% chance`);
+      // console.log("Breakdown: ");
+      // if (selected) {
+      //   selected.weight.forEach((wt) => {
+      //     console.log(`${wt.key}:`, wt.val);
+      //   });
+      // }
+      console.timeEnd("Compute next shuffle");
 
       return nextId;
     } catch (e) {
+      console.timeEnd("Compute next shuffle");
       console.error(e);
       return null;
     }
