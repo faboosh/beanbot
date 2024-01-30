@@ -1,12 +1,14 @@
 import { AudioResource, createAudioResource } from "@discordjs/voice";
-import { getOrCreateMetadata } from "../util/metadata.js";
 import { downloadById } from "../platforms/youtube.js";
+import SongMetadataService from "./SongMetadataService.js";
+import perf from "../../perf.js";
 
 const TARGET_LOUDNESS_LUFS = -14;
 
 const audioResources: Record<string, AudioResource> = {};
 
 class AudioResourceManager {
+  @perf
   static async createAudioResource(
     youtubeId: string
   ): Promise<AudioResource | null> {
@@ -14,13 +16,17 @@ class AudioResourceManager {
       console.log(`Using cached audio resource for "${youtubeId}"`);
       return audioResources[youtubeId];
     }
-    console.time("Create audio resource");
     const result = await downloadById(youtubeId);
     if (!result) return null;
-    const metadata = await getOrCreateMetadata(result.details.id);
-    const audioResource = await createAudioResource(result.filePath, {
-      inlineVolume: true,
-    });
+    const metadata = await SongMetadataService.getOrCreateMetadata(
+      result.details.id
+    );
+    const audioResource = await createAudioResource(
+      `./download/${result.fileName}`,
+      {
+        inlineVolume: true,
+      }
+    );
 
     if (
       metadata &&
@@ -34,7 +40,6 @@ class AudioResourceManager {
       // );
       audioResource.volume.setVolumeDecibels(volumeDiff);
     }
-    console.timeEnd("Create audio resource");
     audioResources[youtubeId] = audioResource;
     return audioResource;
   }

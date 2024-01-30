@@ -7,6 +7,7 @@ import {
   downloadById,
   getTopResult,
 } from "../lib/MusicPlayer/platforms/youtube.js";
+import InteractionService from "../lib/MusicPlayer/modules/InteractionService.js";
 
 const token = process.env.token;
 const client = new Client({
@@ -18,8 +19,8 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
   ],
 });
-const channelId = "786357777831428156";
-const guildId = "590254806208217089";
+const channelId = "837399202819604543";
+const guildId = "836017459982106714";
 const clientID = process.env.spotify_client_id;
 const clientSecret = process.env.spotify_client_secret;
 if (!clientID || !clientSecret)
@@ -251,6 +252,8 @@ function withTimeout(asyncFn: any, timeoutMs: number) {
   return Promise.race([asyncFn(), timeoutPromise(timeoutMs)]);
 }
 
+const interactionService = new InteractionService(guildId);
+
 const parseMessage = async (msg: Message) => {
   const content = await getQueryFromMessage(msg);
   if (!content) return console.error("No viable query found");
@@ -266,6 +269,13 @@ const parseMessage = async (msg: Message) => {
   //   imported: true,
   //   timestamp: msg.createdTimestamp,
   // });
+
+  await interactionService.logPlay(id, {
+    imported: true,
+    // @ts-ignore
+    userId: msg.authorId,
+    timestamp: msg.createdTimestamp,
+  });
 
   console.log(`Finished download for id ${id}`);
 };

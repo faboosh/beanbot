@@ -13,8 +13,15 @@ function slugify(str: string) {
     .replace(/-+/g, "-"); // remove consecutive hyphens
 }
 
-const generateFilename = (videoId: string, videoTitle: string) =>
-  `./download/${slugify(`${videoTitle}`)}-${videoId}.m4a`;
+const generateFilename = (videoId: string, videoTitle: string) => {
+  const fileName = `${slugify(`${videoTitle}`)}-${videoId}.m4a`;
+  const fullPath = `./download/${fileName}`;
+
+  return {
+    fileName,
+    fullPath,
+  };
+};
 
 const VideoDetailCache = new Cache<any>("youtube-video-details");
 
@@ -31,7 +38,8 @@ const downloadById = async (videoId: string) => {
 
   const filePath = generateFilename(videoId, details.title);
 
-  if (fs.existsSync(filePath)) return { details, filePath };
+  if (fs.existsSync(filePath.fullPath))
+    return { details, fileName: filePath.fileName };
 
   const stream = await yt.download(videoId as string, {
     type: "audio", // audio, video or video+audio
@@ -39,13 +47,13 @@ const downloadById = async (videoId: string) => {
     format: "mp4", // media container format
   });
 
-  const file = fs.createWriteStream(filePath);
+  const file = fs.createWriteStream(filePath.fullPath);
 
   for await (const chunk of Utils.streamToIterable(stream)) {
     file.write(chunk);
   }
 
-  return { filePath, details };
+  return { fileName: filePath.fileName, details };
 };
 
 const getTopResult = async (query: string) => {

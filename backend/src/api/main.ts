@@ -9,8 +9,8 @@ import { Subcommands } from "../commands/yt.js";
 import { authMiddleware } from "./middleware.js";
 import { getPlayer } from "../lib/MusicPlayer/MusicPlayer.js";
 import { search } from "../lib/MusicPlayer/platforms/youtube.js";
-import { getOrCreateMetadata } from "../lib/MusicPlayer/util/metadata.js";
 import cors from "cors";
+import SongMetadataService from "../lib/MusicPlayer/modules/SongMetadataService.js";
 
 const start = () => {
   const app = express();
@@ -62,7 +62,7 @@ const start = () => {
 
     if (!player)
       return res.status(400).json({ detail: "No player instance found" });
-    await getOrCreateMetadata(id);
+    await SongMetadataService.getOrCreateMetadata(id);
     player.queueById(id, req.user.userId);
     return res.status(200).json({ detail: "OK" });
   });
@@ -97,7 +97,7 @@ const start = () => {
     const id = req.params.id;
 
     try {
-      const videoDetails = await getOrCreateMetadata(id);
+      const videoDetails = await SongMetadataService.getOrCreateMetadata(id);
       return res.status(200).json(videoDetails);
     } catch (e) {
       console.error(e);

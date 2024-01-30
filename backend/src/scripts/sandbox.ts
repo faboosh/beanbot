@@ -1,17 +1,22 @@
 // import { encode } from "@msgpack/msgpack";
 // import { readFileSync, readdirSync, writeFileSync } from "fs";
-
+const spotifyUrl =
+  "https://open.spotify.com/playlist/0eLy71zrghzGSXEvLvz5TC?si=ce4750728fbf4a48";
 import db from "../db.js";
-import InteractionService from "../lib/MusicPlayer/modules/InteractionService.js";
-import { getOrCreateMetadata } from "../lib/MusicPlayer/util/metadata.js";
-import { encrypt } from "../lib/crypto.js";
-const guildId = "555418700123996163";
+import { spotifyPlaylistToYoutubeIds } from "../lib/MusicPlayer/platforms/spotify/playlist.js";
 const main = async () => {
-  const interactionService = new InteractionService(guildId);
-  const plays = await interactionService.getPlays();
-  await db("plays").limit(10);
-  console.log(plays);
-
+  // console.log(await spotifyPlaylistToYoutubeIds(spotifyUrl));
+  const recentPlays = await db("plays")
+    .where("timestamp", ">", Date.now() - 1000 * 60 * 60)
+    .join("song_metadata", "plays.yt_id", "=", "song_metadata.yt_id")
+    .select(
+      "song_metadata.yt_title",
+      "song_metadata.yt_author",
+      "song_metadata.spotify_title",
+      "song_metadata.spotify_author",
+      "plays.yt_id"
+    );
+  console.log(recentPlays);
   process.exit(0);
 };
 

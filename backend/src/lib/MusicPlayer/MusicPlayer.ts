@@ -1,6 +1,5 @@
 import { Guild } from "discord.js";
 import { getThumbnail, getTopResult } from "./platforms/youtube.js";
-import { getOrCreateMetadata, getTitleAuthor } from "./util/metadata.js";
 import type { EmbedData } from "../embed.js";
 import InteractionService from "./modules/InteractionService.js";
 import PlaybackController from "./modules/PlaybackController.js";
@@ -9,6 +8,8 @@ import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
 import { decrypt } from "../crypto.js";
+import type { a } from "@faboosh/direct-wire-js";
+import SongMetadataService from "./modules/SongMetadataService.js";
 
 export interface IMusicPlayer {
   queueBySearch(query: string, userId?: string): Promise<EmbedData>;
@@ -107,19 +108,30 @@ class MusicPlayer implements IMusicPlayer {
     const currentlyPlaying = this.getCurrentlyPlaying();
     const currentlyShuffling = this.queueManager.getCurrentlyShuffling();
 
-    const id = await getTopResult(query);
-    if (!id) return { title: "Video not found" };
-    this.queueManager.addToPlaylist({
-      id,
-      userId: userId ?? null,
-    });
+    const result = await this.queueManager.queue(query, userId);
+    if (!result || (Array.isArray(result) && result.length === 0)) {
+      return { title: "No results" };
+    }
     if (!currentlyPlaying || currentlyShuffling) await this.playNext();
-    this.interactionService.logPlay(id, { userId });
-    const { title, author } = await getTitleAuthor(id);
+
+    let title: string;
+    let author: string;
+    let thumbnail: string;
+
+    const firstResult = result[0];
+    const metadata = await SongMetadataService.getTitleAuthor(firstResult);
+    title = metadata.title;
+    author = metadata.author;
+    thumbnail = await getThumbnail(firstResult);
+
+    await Promise.all(
+      result.map((id) => this.interactionService.logPlay(id, { userId }))
+    );
+
     return {
       title: `Queueing ${author} - ${title}`,
       description: `Searched for ${query}`,
-      thumbnail: await getThumbnail(id),
+      thumbnail: thumbnail,
     };
   }
 
@@ -160,7 +172,9 @@ class MusicPlayer implements IMusicPlayer {
     currentlyPlaying = this.getCurrentlyPlaying();
     if (!currentlyPlaying) return { title: "Failed to get next song" };
 
-    const { title, author } = await getTitleAuthor(currentlyPlaying.id);
+    const { title, author } = await SongMetadataService.getTitleAuthor(
+      currentlyPlaying.id
+    );
     return {
       title: "Skipping",
       fields: [
@@ -188,28 +202,33 @@ class MusicPlayer implements IMusicPlayer {
   async nowPlaying(): Promise<EmbedData> {
     const currentlyPlaying = this.getCurrentlyPlaying();
 
+    if (!currentlyPlaying) {
+      return { title: `Nothing is currently playing!` };
+    }
+
     try {
-      if (currentlyPlaying) {
-        const elapsedSeconds =
-          this.playbackController.getSecondsSinceStartedPlaying();
-        const totalSeconds = (await getOrCreateMetadata(currentlyPlaying.id))
-          ?.length_seconds;
-        if (!totalSeconds)
-          return { title: "Something went wrong fetching song data" };
-        const filePath = await generatePlayingCard(
-          currentlyPlaying.id,
-          elapsedSeconds,
-          totalSeconds
-        );
-        return {
-          image: filePath,
-        };
-      } else {
-        return { title: `Nothing is currently playing!` };
+      const secondsElapsed =
+        this.playbackController.getSecondsSinceStartedPlaying();
+      const metadata = await SongMetadataService.getOrCreateMetadata(
+        currentlyPlaying.id
+      );
+
+      if (!metadata?.length_seconds) {
+        throw new Error("Failed to fetch song length");
       }
-    } catch (e) {
+
+      const playingCardPath = await generatePlayingCard(
+        currentlyPlaying.id,
+        secondsElapsed,
+        metadata.length_seconds
+      );
+
+      return {
+        image: playingCardPath,
+      };
+    } catch (e: any) {
       console.error(e);
-      return { title: `Something went wrong` };
+      return { title: `Something went wrong: ${e.message}` };
     }
   }
 
@@ -229,12 +248,14 @@ class MusicPlayer implements IMusicPlayer {
 
       if (!userIds[0]) throw new Error("No results, this should never happen");
 
-      const { title, author } = await getTitleAuthor(currentlyPlaying.id);
+      const { title, author } = await SongMetadataService.getTitleAuthor(
+        currentlyPlaying.id
+      );
 
       return {
         title: "How did we end up here?",
         description: `"${author} - ${title}" has been played by ${userIds
-          .map((id) => `<@${decrypt(id)}>`)
+          .map((id) => `<@${id}>`)
           .join(", ")}`,
         thumbnail: await getThumbnail(currentlyPlaying.id),
       };
@@ -253,8 +274,8 @@ class MusicPlayer implements IMusicPlayer {
       if (!userIds[0]) throw new Error("No results, this should never happen");
 
       return await Promise.all(
-        userIds.map((id) => {
-          return this.guild.client.users.fetch(id);
+        userIds.map(async (id) => {
+          return await this.guild.client.users.fetch(id);
         })
       );
     } catch (e) {
@@ -264,7 +285,12 @@ class MusicPlayer implements IMusicPlayer {
   }
 
   async getUserDetails(id: string) {
-    return this.guild.client.users.fetch(decrypt(id));
+    try {
+      return await this.guild.client.users.fetch(decrypt(id));
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   }
 
   async stats(): Promise<EmbedData> {
@@ -303,9 +329,13 @@ class MusicPlayer implements IMusicPlayer {
   }
 
   disconnect() {
-    clearInterval(this.disconnectInterval);
-    this.voiceConnectionManager.destroy();
-    destroyPlayer(this.voiceConnectionManager.getGuild());
+    try {
+      clearInterval(this.disconnectInterval);
+      this.voiceConnectionManager.destroy();
+      destroyPlayer(this.voiceConnectionManager.getGuild());
+    } catch (e) {
+      console.error(e);
+    }
   }
 
   getShuffleEnabled() {

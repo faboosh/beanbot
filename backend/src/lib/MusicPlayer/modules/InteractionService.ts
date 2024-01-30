@@ -1,6 +1,6 @@
 import db from "../../../db.js";
 import { downloadById } from "../platforms/youtube.js";
-import Cache from "../../Cache.js";
+import Cache, { cache, type CacheKeyable } from "../../Cache.js";
 import { decrypt, encrypt } from "../../crypto.js";
 import UserDataService from "../../UserDataService.js";
 
@@ -14,12 +14,14 @@ type Play = {
   numPlays: number;
 };
 
-class InteractionService {
+class InteractionService implements CacheKeyable {
   guildId: string;
-  playsCache: Cache<Play[]>;
   constructor(guildId: string) {
     this.guildId = guildId;
-    this.playsCache = new Cache<Play[]>(`${encrypt(guildId)}-plays`);
+  }
+
+  getCacheKey() {
+    return encrypt(this.guildId);
   }
 
   async logSkip(data: { yt_id: string; timestamp: number; user_id: string }) {
@@ -48,7 +50,7 @@ class InteractionService {
     const data = {
       title: result.details.title,
       yt_id: result.details.id,
-      filename: result.filePath,
+      filename: result.fileName,
       guild_id: encrypt(this.guildId),
       imported: !!extra?.imported,
       timestamp: extra?.timestamp ?? Date.now(),
@@ -58,15 +60,10 @@ class InteractionService {
     await db("plays").insert(data);
   }
 
+  @cache<Play[]>("plays")
   async getPlays() {
-    console.time("getPlays");
     const encryptedGuildId = encrypt(this.guildId);
 
-    const playsFromCache = this.playsCache.get(encryptedGuildId);
-    if (playsFromCache) {
-      console.timeEnd("getPlays");
-      return playsFromCache;
-    }
     const plays = (await db("plays")
       .select("plays.yt_id", "title", "length_seconds", "lufs")
       .select(db.raw("GROUP_CONCAT(DISTINCT user_id) as user_ids")) // Aggregate user_ids
@@ -97,8 +94,6 @@ class InteractionService {
       } as Play;
     });
 
-    this.playsCache.set(encryptedGuildId, parsedPlays);
-    console.timeEnd("getPlays");
     return parsedPlays;
   }
 

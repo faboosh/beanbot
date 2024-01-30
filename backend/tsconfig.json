@@ -11,6 +11,7 @@
     /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": false,
+    "experimentalDecorators": true,
     /* If NOT transpiling with TypeScript: */
     "moduleResolution": "Bundler",
     "module": "ESNext",

@@ -7,8 +7,8 @@ import axios from "axios";
 import { randomUUID } from "crypto";
 import { downloadById, getThumbnail } from "../../platforms/youtube.js";
 import { getPrimitive as c } from "../../../colorsystem.js";
-import { getTitleAuthor } from "../metadata.js";
 import { secondsToTimestamp } from "../../../util.js";
+import SongMetadataService from "../../modules/SongMetadataService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,7 +138,6 @@ const generatePlayingCard = (
   elapsedSeconds: number = 60,
   totalSeconds: number = 350
 ): Promise<string> => {
-  console.time("Generate image");
   if (!existsSync(TMP_DIR)) mkdirSync(TMP_DIR);
   const w = 1000;
   const h = 200;
@@ -151,7 +150,7 @@ const generatePlayingCard = (
     const thumbnailUrl = await getThumbnail(youtubeId);
     if (!thumbnailUrl) throw new Error("No thumbnail found");
 
-    let { title, author } = await getTitleAuthor(youtubeId);
+    let { title, author } = await SongMetadataService.getTitleAuthor(youtubeId);
     if (title.length > maxTitleLen)
       title = title.substring(0, maxTitleLen) + "...";
     const outPath = path.join(OUT_DIR, `${youtubeId}.png`);
@@ -226,7 +225,6 @@ const generatePlayingCard = (
         await cleanupTemp();
         if (err) reject(err);
         // console.log("Composite image created:", outPath);
-        console.timeEnd("Generate image");
 
         resolve(outPath);
       });
