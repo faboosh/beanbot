@@ -1,5 +1,6 @@
 import { decode, encode } from "@msgpack/msgpack";
 import fs from "fs";
+import "reflect-metadata";
 
 class Cache<T> {
   INVALIDATE_AFTER_MS = 24 * 60 * 60 * 1000;
@@ -68,4 +69,41 @@ class Cache<T> {
   }
 }
 
+const caches: Record<string, Cache<any>> = {};
+
+// ...
+
+function cache<T>(name: string, durationMs: number = 24 * 60 * 60 * 1000) {
+  const cacheDecorator: MethodDecorator = (
+    target: Object,
+    propertyKey: string | symbol,
+    descriptor: PropertyDescriptor
+  ) => {
+    const originalMethod = descriptor.value;
+
+    descriptor.value = async function (...args: any[]) {
+      const dynamicCacheKey = (this as any)?.getCacheKey
+        ? (this as any).getCacheKey()
+        : null;
+      const cacheKey = dynamicCacheKey ? `${name}-${dynamicCacheKey}` : name;
+      if (!caches[cacheKey]) caches[cacheKey] = new Cache<T>(cacheKey);
+      const cache = caches[cacheKey];
+      if (cache.isValid(cacheKey)) return cache.get(cacheKey);
+      const result = await originalMethod.apply(this, args);
+      cache.set(cacheKey, result);
+      return result;
+    };
+
+    return descriptor;
+  };
+
+  return cacheDecorator;
+}
+
+interface CacheKeyable {
+  getCacheKey(): string;
+}
+
 export default Cache;
+export { cache };
+export type { CacheKeyable };
