@@ -270,11 +270,11 @@ const parseMessage = async (msg: Message) => {
   //   timestamp: msg.createdTimestamp,
   // });
 
-  await interactionService.logPlay(id, {
+  await interactionService.logPlay({
     imported: true,
     // @ts-ignore
     userId: msg.authorId,
-    timestamp: msg.createdTimestamp,
+    timestamp: new Date(msg.createdTimestamp),
   });
 
   console.log(`Finished download for id ${id}`);

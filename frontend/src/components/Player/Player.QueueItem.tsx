@@ -57,13 +57,13 @@ const PlayerQueueItem = ({ item }: { item: SongMetadata; place?: number }) => {
   const { playlist } = usePlayerContext();
 
   const getTitle = (result: SongMetadata) => {
-    const { yt_title, spotify_title } = result;
-    return spotify_title ? spotify_title : yt_title;
+    const { youtubeTitle, spotifyTitle } = result;
+    return spotifyTitle ? spotifyTitle : youtubeTitle;
   };
 
   const getArtist = (result: SongMetadata) => {
-    const { yt_author, spotify_author } = result;
-    return spotify_author ? spotify_author : yt_author;
+    const { youtubeAuthor, spotifyAuthor } = result;
+    return spotifyAuthor ? spotifyAuthor : youtubeAuthor;
   };
 
   useEffect(() => {

@@ -1,13 +1,7 @@
 import MusicPlayer from "@backend/lib/MusicPlayer/MusicPlayer";
+import { Song } from "@backend/schema";
 
-export type SongDisplayMetadata = {
-  yt_id: string;
-  yt_title: string;
-  yt_author: string;
-  spotify_title: string | null;
-  spotify_author: string | null;
-  length_seconds: number | null;
-};
+export type SongDisplayMetadata = Omit<Song, "loudnessLufs" | "fileName">;
 
 export type SongPlaybackMetadata = {
   yt_id: string;

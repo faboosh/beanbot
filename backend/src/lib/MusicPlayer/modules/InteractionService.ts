@@ -1,17 +1,19 @@
-import db from "../../../db.js";
-import { getVideoDetails } from "../platforms/youtube.js";
+import { drizzleDB } from "../../../db.js";
 import { cache, type CacheKeyable } from "../../Cache.js";
 import { encrypt } from "../../crypto.js";
 import UserDataService from "../../UserDataService.js";
+import { plays, skips, songs, type CreatePlay } from "../../../schema.js";
+import { desc, eq, sql } from "drizzle-orm";
+import SongMetadataService from "./SongMetadataService.js";
 
 type Play = {
-  ytId: string;
-  title: string;
-  lengthSeconds: number | null;
-  lufs: number | null;
-  userIds: string[];
-  timestamps: number[];
+  songId: string | null;
   numPlays: number;
+  playedAt: Date[];
+  playedBy: string[];
+  lengthSeconds: number | null;
+  youtubeId: string | null;
+  youtubeTitle: string | null;
 };
 
 class InteractionService implements CacheKeyable {
@@ -24,89 +26,136 @@ class InteractionService implements CacheKeyable {
     return encrypt(this.guildId);
   }
 
-  async logSkip(data: { yt_id: string; timestamp: number; user_id: string }) {
-    if (!(await UserDataService.hasConsented(data.user_id))) return;
-    await db("skips").insert({
-      guild_id: encrypt(this.guildId),
-      ...data,
-    });
+  async logSkip(data: {
+    userId: string;
+    youtubeId?: string;
+    songId?: string;
+    timestamp?: Date;
+  }) {
+    if (!(await UserDataService.hasConsented(data.userId))) return;
+
+    if (data.youtubeId) {
+      const metadata = await SongMetadataService.getPlaybackMetadata(
+        data.youtubeId
+      );
+      await drizzleDB
+        .insert(skips)
+        .values({
+          userId: encrypt(data.userId),
+          songId: metadata.id,
+          timestamp: data.timestamp ?? new Date(),
+          guildId: encrypt(this.guildId),
+        })
+        .execute();
+      return;
+    } else if (data.songId) {
+      await drizzleDB
+        .insert(skips)
+        .values({
+          userId: encrypt(data.userId),
+          songId: data.songId,
+          timestamp: data.timestamp ?? new Date(),
+          guildId: encrypt(this.guildId),
+        })
+        .execute();
+      return;
+    } else {
+      throw new Error("Must provide either youtubeId or songId");
+    }
   }
 
   async logPlay(
-    youtubeId: string,
-    extra?: {
+    data: Pick<CreatePlay, "userId"> & {
+      timestamp?: Date;
+      songId?: string;
+      youtubeId?: string;
       imported?: boolean;
-      timestamp?: number;
-      userId?: string;
     }
   ) {
-    if (extra?.userId && !(await UserDataService.hasConsented(extra.userId)))
+    if (data.userId && !(await UserDataService.hasConsented(data.userId)))
       return;
-    const result = await getVideoDetails(youtubeId);
-    if (!result) {
-      console.error("Could not log play for YouTube ID", youtubeId);
+
+    if (data.youtubeId) {
+      const metadata = await SongMetadataService.getPlaybackMetadata(
+        data.youtubeId
+      );
+      await drizzleDB
+        .insert(plays)
+        .values({
+          userId: encrypt(data.userId),
+          songId: metadata.id,
+          timestamp: data.timestamp ?? new Date(),
+          imported: data.imported ?? false,
+          guildId: encrypt(this.guildId),
+        })
+        .execute();
       return;
+    } else if (data.songId) {
+      await drizzleDB
+        .insert(plays)
+        .values({
+          userId: encrypt(data.userId),
+          songId: data.songId,
+          timestamp: data.timestamp ?? new Date(),
+          imported: data.imported ?? false,
+          guildId: encrypt(this.guildId),
+        })
+        .execute();
+      return;
+    } else {
+      throw new Error("Must provide either youtubeId or songId");
     }
-    const data = {
-      title: result.title,
-      yt_id: result.id,
-      guild_id: encrypt(this.guildId),
-      imported: !!extra?.imported,
-      timestamp: extra?.timestamp ?? Date.now(),
-      user_id: extra?.userId ? encrypt(extra.userId) : null,
-    };
-    console.log("Logging play: ", data);
-    await db("plays").insert(data);
   }
 
   @cache<Play[]>("plays")
   async getPlays() {
     const encryptedGuildId = encrypt(this.guildId);
 
-    const plays = (await db("plays")
-      .select("plays.yt_id", "title", "length_seconds", "lufs")
-      .select(db.raw("GROUP_CONCAT(DISTINCT user_id) as user_ids")) // Aggregate user_ids
-      .select(db.raw("GROUP_CONCAT(DISTINCT timestamp) as timestamps")) // Aggregate timestamps
-      .count("plays.yt_id as num_plays") // Count the number of plays for each yt_id
-      .where({ guild_id: encryptedGuildId })
-      .join("song_metadata", "plays.yt_id", "=", "song_metadata.yt_id")
-      .groupBy("plays.yt_id")
-      .orderBy("num_plays", "desc")) as {
-      yt_id: string;
-      title: string;
-      length_seconds: number;
-      lufs: number;
-      user_ids: string;
-      timestamps: string;
-      num_plays: number;
-    }[];
+    const playsRes = await drizzleDB
+      .select({
+        songId: plays.songId,
+        numPlays: sql<number>`cast(COUNT(${plays.songId}) as int)`,
+        playedAt: sql<string>`string_agg(DISTINCT ${plays.timestamp}::text, ',')`,
+        playedBy: sql<string>`string_agg(DISTINCT ${plays.userId}::text, ',')`,
+        lengthSeconds: songs.lengthSeconds,
+        youtubeTitle: songs.youtubeTitle,
+        youtubeId: songs.youtubeId,
+      })
+      .from(plays)
+      .where(eq(plays.guildId, encryptedGuildId))
+      .fullJoin(songs, eq(plays.songId, songs.id))
+      .orderBy(({ numPlays }) => desc(numPlays))
+      .groupBy(
+        plays.songId,
+        songs.lengthSeconds,
+        songs.youtubeId,
+        songs.youtubeTitle
+      );
 
-    const parsedPlays = plays.map((play) => {
-      return {
-        ytId: play.yt_id,
-        title: play.title,
-        lengthSeconds: play.length_seconds,
-        lufs: play.lufs,
-        userIds: play.user_ids.split(","),
-        timestamps: play.timestamps.split(",").map((id) => Number(id)),
-        numPlays: play.num_plays,
-      } as Play;
+    const parsedPlays = playsRes.map((play) => {
+      (play as any).playedAt = play.playedAt
+        .split(",")
+        .map((data) => new Date(data));
+      (play as any).playedBy = play.playedBy.split(",");
+      return play as unknown as Play;
     });
 
     return parsedPlays;
   }
 
   async getUserIdsWhoPlayed(youtubeId: string) {
-    const user_ids = (await db("plays")
-      .select(db.raw("GROUP_CONCAT(DISTINCT user_id) as user_ids"))
-      .groupBy("yt_id")
-      .where({ yt_id: youtubeId })) as {
-      user_ids: string;
-    }[];
+    const userIds = await drizzleDB
+      .select({
+        userIds: sql<string>`string_agg(DISTINCT ${plays.userId}::text, ',')`,
+      })
+      .from(plays)
+      .where(eq(plays.songId, youtubeId))
+      .groupBy(plays.songId)
+      .execute();
 
-    if (!user_ids?.[0]) return [];
+    if (!userIds?.[0]) return [];
 
-    return user_ids[0].user_ids.split(",");
+    return userIds[0].userIds.split(",");
   }
 }
 

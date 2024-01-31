@@ -20,26 +20,39 @@ export const songs = pgTable("songs", {
   loudnessLufs: doublePrecision("lufs"),
 });
 
+export type Song = typeof songs.$inferSelect;
+export type CreateSong = typeof songs.$inferInsert;
+
 export const plays = pgTable("plays", {
   id: uuid("id").defaultRandom().primaryKey(),
   songId: uuid("song_id")
     .references(() => songs.id)
     .notNull(),
-  userId: text("user_id"),
-  guildId: text("guild_id"),
-  timestamp: timestamp("created_at"),
+  userId: text("user_id").notNull(),
+  guildId: text("guild_id").notNull(),
+  timestamp: timestamp("timestamp").notNull(),
+  imported: boolean("imported").notNull().default(false),
 });
+
+export type Play = typeof plays.$inferSelect;
+export type CreatePlay = typeof plays.$inferInsert;
 
 export const skips = pgTable("skips", {
   id: uuid("id").defaultRandom().primaryKey(),
   songId: uuid("song_id").references(() => songs.id),
-  userId: text("user_id"),
-  guildId: text("guild_id"),
-  timestamp: timestamp("created_at"),
+  userId: text("user_id").notNull(),
+  guildId: text("guild_id").notNull(),
+  timestamp: timestamp("created_at").notNull(),
 });
+
+export type Skip = typeof skips.$inferSelect;
+export type CreateSkip = typeof skips.$inferInsert;
 
 export const dataConsent = pgTable("data-consent", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").unique().notNull(),
-  consented: boolean("consented"),
+  consented: boolean("consented").notNull(),
 });
+
+export type DataConsent = typeof dataConsent.$inferSelect;
+export type CreateDataConsent = typeof dataConsent.$inferInsert;

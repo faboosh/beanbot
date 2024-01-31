@@ -17,8 +17,10 @@
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": true,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "experimentalDecorators": true,
     "paths": {
       "@shared/*": ["../shared/src/*"],
       "@backend/*": ["../backend/src/*"]

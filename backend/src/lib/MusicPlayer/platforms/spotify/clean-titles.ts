@@ -1,13 +1,14 @@
 import { closest, distance } from "fastest-levenshtein";
 import type { Track } from "@spotify/web-api-ts-sdk";
-import { downloadById, getVideoDetails } from "../youtube.js";
-import type { SongMetadata } from "@shared/types.js";
+import { getVideoDetails } from "../youtube.js";
 import { cleanTitle } from "./filters.js";
 import spotify from "./client.js";
+import type { CreateSong } from "../../../../schema.js";
 
 type SpotifyMatch = {
   youtubeTitle: string;
   bestMatch: {
+    id: string;
     artist: string;
     title: string;
   };
@@ -25,19 +26,16 @@ const buildSongMetadata = (
   youtubeData: YoutubeData,
   spotifyMatch?: SpotifyMatch
 ) => {
-  const songMetadata: SongMetadata = {
-    yt_id: youtubeData.id,
-    yt_title: youtubeData.title,
-    yt_author: youtubeData.author,
-    spotify_author: null,
-    spotify_title: null,
-    length_seconds: null,
-    lufs: null,
+  const songMetadata: CreateSong = {
+    youtubeId: youtubeData.id,
+    youtubeTitle: youtubeData.title,
+    youtubeAuthor: youtubeData.author,
   };
 
   if (spotifyMatch) {
-    songMetadata.spotify_title = spotifyMatch.bestMatch.title;
-    songMetadata.spotify_author = spotifyMatch.bestMatch.artist;
+    songMetadata.spotifyTitle = spotifyMatch.bestMatch.title;
+    songMetadata.spotifyAuthor = spotifyMatch.bestMatch.artist;
+    songMetadata.spotifyId = spotifyMatch.bestMatch.id;
   }
 
   return songMetadata;
@@ -47,31 +45,31 @@ const buildArtistTitleList = (tracks: Track[]) => {
   return tracks.map((track) => {
     const name = track.name;
     const artists = track.artists.map((artist) => artist.name);
-    return `${artists.join(", ")} - ${name}`;
+    return { song: `${artists.join(", ")} - ${name}`, id: track.id };
   });
 };
 
 const calculateDistances = (
   cleanedTitle: string,
   youtubeData: YoutubeData,
-  artistTitleList: string[]
+  artistTitleList: { song: string; id: string }[]
 ): SpotifyMatch[] => {
   return [cleanedTitle, `${youtubeData.author} - ${cleanedTitle}`].map(
     (title) => {
       const bestMatch = closest(
         title.toLowerCase(),
-        artistTitleList.map((word) => word.toLowerCase())
+        artistTitleList.map(({ song }) => song.toLowerCase())
       );
       const bestMatchIndex = artistTitleList.findIndex(
-        (title) => title.toLowerCase() === bestMatch
+        ({ song }) => song.toLowerCase() === bestMatch
       );
 
       if (bestMatchIndex === -1)
         throw new Error(
           "Could not find index of best match, this should never happen"
         );
-
-      const splitBestMatch = artistTitleList[bestMatchIndex].split(" - ");
+      const bestMatchObj = artistTitleList[bestMatchIndex];
+      const splitBestMatch = bestMatchObj.song.split(" - ");
       const wordSimilarity =
         title.split(" ").filter((word) => {
           const wordsInMatch = bestMatch
@@ -87,6 +85,7 @@ const calculateDistances = (
       return {
         youtubeTitle: title,
         bestMatch: {
+          id: bestMatchObj.id,
           artist: splitBestMatch[0],
           title: splitBestMatch[1],
         },
@@ -118,9 +117,7 @@ function findCloseEnoughMatch(distances: SpotifyMatch[]) {
   return closeEnough;
 }
 
-const getTitleData = async (
-  youtubeId: string
-): Promise<SongMetadata | null> => {
+const getTitleData = async (youtubeId: string): Promise<CreateSong | null> => {
   try {
     const youtubeData = await getVideoDetails(youtubeId);
     if (!youtubeData) {

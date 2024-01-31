@@ -128,27 +128,27 @@ const PlayerNowPlaying = ({ style }: { style: CSSProperties }) => {
 
   const getTitle = () => {
     if (!currentSongMetadata) return "";
-    const { yt_title, spotify_title } = currentSongMetadata;
+    const { youtubeTitle, spotifyTitle } = currentSongMetadata;
 
-    return spotify_title ? spotify_title : yt_title;
+    return spotifyTitle ? spotifyTitle : youtubeTitle;
   };
 
   const getArtist = () => {
     if (!currentSongMetadata) return "";
-    const { yt_author, spotify_author } = currentSongMetadata;
+    const { youtubeAuthor, spotifyTitle } = currentSongMetadata;
 
-    return spotify_author ? spotify_author : yt_author;
+    return spotifyTitle ? spotifyTitle : youtubeAuthor;
   };
 
   useEffect(() => {
     if (
       !wrapperRef.current ||
       !currentSongMetadata ||
-      !currentSongMetadata.length_seconds
+      !currentSongMetadata.lengthSeconds
     )
       return;
     const wrapper = wrapperRef.current;
-    const totalLength = Math.min(currentSongMetadata.length_seconds);
+    const totalLength = Math.min(currentSongMetadata.lengthSeconds);
     const interval = setInterval(() => {
       const elapsedSeconds = Math.min(
         Math.round(Date.now() - currentSongStartedAtTs) / 1000,

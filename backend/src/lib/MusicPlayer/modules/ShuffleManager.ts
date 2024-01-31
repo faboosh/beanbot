@@ -58,7 +58,7 @@ class ShuffleManager implements CacheKeyable {
   @perf
   private filterNotRecentlyPlayed(entries: Play[]) {
     const filteredEntries = entries.filter((play) => {
-      return !this.playHistory.isInHistory(play.ytId);
+      return !this.playHistory.isInHistory(play.youtubeId as string);
     });
 
     return filteredEntries;
@@ -68,7 +68,7 @@ class ShuffleManager implements CacheKeyable {
   private async filterNotInVoiceChannel(entries: Play[]) {
     const userIds = await this.getCurrentVoiceMembers();
     const filteredEntries = entries.filter((play) => {
-      return play.userIds.some((userId) => userIds.includes(userId));
+      return play.playedBy.some((userId) => userIds.includes(userId));
     });
 
     return filteredEntries;
@@ -91,7 +91,7 @@ class ShuffleManager implements CacheKeyable {
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       entry.weight.push({
-        val: entry.play.userIds.length * this.NUM_MEMBERS_PLAYED_MULTIPLIER,
+        val: entry.play.playedBy.length * this.NUM_MEMBERS_PLAYED_MULTIPLIER,
         key: "number of members played",
       });
     }
@@ -109,9 +109,9 @@ class ShuffleManager implements CacheKeyable {
 
       const inMonths: number[] = [];
 
-      for (let i = 0; i < entry.play.timestamps.length; i++) {
-        const timestamp = entry.play.timestamps[i];
-        const timeAgo = now - timestamp;
+      for (let i = 0; i < entry.play.playedAt.length; i++) {
+        const timestamp = entry.play.playedAt[i];
+        const timeAgo = now - timestamp.getTime();
         const monthsAgo = Math.floor(timeAgo / oneMonthMs);
         if (!inMonths.includes(monthsAgo)) inMonths.push(monthsAgo);
       }
@@ -203,20 +203,21 @@ class ShuffleManager implements CacheKeyable {
       let filteredPlays = this.filterNotRecentlyPlayed(plays);
       filteredPlays = this.filterTooLongOrShort(filteredPlays);
       filteredPlays = await this.filterNotInVoiceChannel(filteredPlays);
+
       let weightedPlays = filteredPlays.map((play) => {
         return {
           weight: [],
           play,
         } as WeightedPlay;
       });
+
       weightedPlays = this.weightByNumMembersPlayedCount(weightedPlays);
       weightedPlays = this.weightByPopularityOverTime(weightedPlays);
       weightedPlays = this.weightBySongLength(weightedPlays);
-
       const weightsArr = weightedPlays.flatMap((entry) =>
         Array(entry.weight.reduce((acc, val) => acc + val.val, 0))
           .fill(null)
-          .map(() => entry.play.ytId)
+          .map(() => entry.play.youtubeId)
       );
       const nextId = weightsArr[Math.round(Math.random() * weightsArr.length)];
       if (!nextId) return null;

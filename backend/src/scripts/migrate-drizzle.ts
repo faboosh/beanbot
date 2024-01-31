@@ -22,13 +22,15 @@ const main = async () => {
     "timestamp",
     "user_id",
     "guild_id",
-    "filename"
+    "filename",
+    "imported"
   )) as {
     yt_id: string;
     timestamp: number;
     user_id: string;
     guild_id: string;
     filename: string;
+    imported: boolean;
   }[];
 
   console.log("importing plays");
@@ -50,6 +52,7 @@ const main = async () => {
     await drizzleDb.insert(schema.plays).values({
       songId: song[0].id,
       timestamp: new Date(play.timestamp),
+      imported: play.imported,
       userId: play.user_id,
       guildId: play.guild_id,
     });

@@ -1,0 +1,1 @@
+ALTER TABLE "plays" RENAME COLUMN "created_at" TO "timestamp";

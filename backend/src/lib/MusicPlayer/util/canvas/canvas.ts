@@ -144,7 +144,7 @@ const generatePlayingCard = (
   return new Promise(async (resolve, reject) => {
     const totalSeconds =
       (await SongMetadataService.getDisplayMetadata(youtubeId))
-        ?.length_seconds ?? 0;
+        ?.lengthSeconds ?? 0;
     if (!totalSeconds) throw new Error("Song length not found");
     const thumbnailUrl = await getThumbnail(youtubeId);
     if (!thumbnailUrl) throw new Error("No thumbnail found");

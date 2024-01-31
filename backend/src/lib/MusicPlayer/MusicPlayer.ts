@@ -126,7 +126,12 @@ class MusicPlayer implements IMusicPlayer {
     thumbnail = await getThumbnail(firstResult);
 
     await Promise.all(
-      result.map((id) => this.interactionService.logPlay(id, { userId }))
+      result.map((id) =>
+        this.interactionService.logPlay({
+          youtubeId: id,
+          userId: userId as string,
+        })
+      )
     );
 
     return {
@@ -148,7 +153,10 @@ class MusicPlayer implements IMusicPlayer {
       id: youtubeId,
       userId: userId,
     });
-    this.interactionService.logPlay(youtubeId, { userId });
+    this.interactionService.logPlay({
+      youtubeId,
+      userId,
+    });
   }
 
   async removeFromQueue(youtubeId: string) {
@@ -161,9 +169,8 @@ class MusicPlayer implements IMusicPlayer {
     if (currentlyPlaying) {
       try {
         await this.interactionService.logSkip({
-          yt_id: currentlyPlaying.id,
-          user_id: userId,
-          timestamp: Date.now(),
+          youtubeId: currentlyPlaying.id,
+          userId: userId,
         });
       } catch (e) {
         console.error(`Error logging skip: `, e);
@@ -296,14 +303,16 @@ class MusicPlayer implements IMusicPlayer {
 
     const reply = [
       ...sorted.map((play, i) => {
-        return `${i + 1}. ${play.title} (${play.numPlays} plays)`;
+        return `${i + 1}. ${play.youtubeTitle} (${play.numPlays} plays)`;
       }),
     ];
 
     for (let i = 0; i < sorted.length; i++) {
       const play = sorted[i];
       if (!play) continue;
-      const finalString = `${i + 1}. ${play.title} (${play.numPlays} plays)\n`;
+      const finalString = `${i + 1}. ${play.youtubeTitle} (${
+        play.numPlays
+      } plays)\n`;
       if (
         reply.join("\n").length + reply.length + finalString.length + 1 >=
         MAX_CHARS

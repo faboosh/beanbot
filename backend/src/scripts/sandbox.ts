@@ -1,25 +1,39 @@
-import e from "express";
-import { encrypt, decryptIfEncrypted } from "../lib/crypto.js";
+import "dotenv-esm/config";
+import { encrypt } from "../lib/crypto.js";
+import { plays, songs } from "../schema.js";
+import { desc, eq, sql } from "drizzle-orm";
+import { drizzleDB } from "../db.js";
 
-const wordsArray = [
-  "cybernetic",
-  "neon",
-  "dystopia",
-  "android",
-  "replicant",
-  "hacker",
-  "matrix",
-  "virtual",
-  "augmentation",
-  "synthetic",
-];
+const userId = "264599423076532225";
 
 const main = async () => {
-  const encrypted = encrypt(wordsArray[0]);
-  console.log(
-    decryptIfEncrypted(encrypted) ==
-      decryptIfEncrypted(decryptIfEncrypted(encrypted))
-  );
+  const playsRes = await drizzleDB
+    .select({
+      numPlays: sql<number>`cast(COUNT(*) as int)`,
+      youtubeId: songs.youtubeId,
+      youtubeTitle: songs.youtubeTitle,
+      youtubeAuthor: songs.youtubeAuthor,
+      spotifyId: songs.spotifyId,
+      spotifyTitle: songs.spotifyTitle,
+      spotifyAuthor: songs.spotifyAuthor,
+    })
+    .from(plays)
+    .where(eq(plays.userId, encrypt(userId)))
+    .groupBy(
+      plays.songId,
+      plays.userId,
+      songs.youtubeId,
+      songs.youtubeTitle,
+      songs.youtubeAuthor,
+      songs.spotifyId,
+      songs.spotifyTitle,
+      songs.spotifyAuthor
+    )
+    .leftJoin(songs, eq(plays.songId, songs.id))
+    .orderBy(({ numPlays }) => desc(numPlays))
+    .execute();
+
+  console.log(playsRes);
   process.exit(0);
 };
 

@@ -22,6 +22,34 @@
       "when": 1706711863392,
       "tag": "0002_nasty_firedrake",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1706719021652,
+      "tag": "0003_modern_doctor_faustus",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1706720941527,
+      "tag": "0004_soft_chameleon",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1706722459460,
+      "tag": "0005_damp_zombie",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1706726056019,
+      "tag": "0006_reflective_rattler",
+      "breakpoints": true
     }
   ]
 }

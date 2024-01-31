@@ -3,11 +3,13 @@ import type {
   SongMetadata,
   SongPlaybackMetadata,
 } from "@shared/types.js";
-import db from "../../../db.js";
+import db, { drizzleDB } from "../../../db.js";
 import { cache } from "../../Cache.js";
 import { downloadById, getVideoDetails } from "../platforms/youtube.js";
 import { getLoudness } from "../util/ffmpeg.js";
 import { getTitleData } from "../platforms/spotify/index.js";
+import { songs } from "../../../schema.js";
+import { eq } from "drizzle-orm";
 
 class MoodGenreService {
   static async createGenre(name: string): Promise<void> {
@@ -60,23 +62,25 @@ class SongMetadataService {
       const fileName = await downloadById(youtubeId);
       if (!fileName) throw new Error("Could not download");
 
-      const lufs = await getLoudness(fileName);
+      const lufs = (await getLoudness(fileName)) as number;
 
-      const data: SongPlaybackMetadata = {
-        yt_id: youtubeId,
-        lufs: lufs as number,
-      };
+      const data = await drizzleDB
+        .insert(songs)
+        .values({
+          youtubeId,
+          fileName,
+          loudnessLufs: lufs,
+        })
+        .onConflictDoUpdate({
+          target: songs.youtubeId,
+          set: {
+            fileName,
+            loudnessLufs: lufs,
+          },
+        })
+        .returning();
 
-      await db("song_metadata")
-        .insert(
-          Object.fromEntries(
-            Object.entries(data).filter(([_key, val]) => !!val)
-          )
-        )
-        .onConflict("yt_id")
-        .merge();
-
-      return data;
+      return data[0];
     } catch (e) {
       console.error(e);
       return null;
@@ -85,11 +89,16 @@ class SongMetadataService {
 
   @cache<SongPlaybackMetadata>("song-playback-metadata")
   static async getPlaybackMetadata(youtubeId: string) {
-    const metadata = (await db("song_metadata")
-      .select("lufs", "yt_id")
-      .where({ yt_id: youtubeId })
-      .whereNotNull("yt_title")
-      .whereNotNull("length_seconds")) as SongPlaybackMetadata[];
+    const metadata = await drizzleDB
+      .select({
+        id: songs.id,
+        loudnessLufs: songs.loudnessLufs,
+        fileName: songs.fileName,
+        lengthSeconds: songs.lengthSeconds,
+      })
+      .from(songs)
+      .where(eq(songs.youtubeId, youtubeId))
+      .execute();
 
     return metadata?.[0] ?? null;
   }
@@ -107,25 +116,30 @@ class SongMetadataService {
       const lengthSeconds = result.duration;
       const titleData = await getTitleData(youtubeId);
 
-      const data: SongDisplayMetadata = {
-        yt_id: youtubeId,
-        length_seconds: lengthSeconds,
-        yt_title: titleData?.yt_title ?? "",
-        yt_author: titleData?.yt_author ?? "",
-        spotify_title: titleData?.spotify_title ?? null,
-        spotify_author: titleData?.spotify_author ?? null,
-      };
+      const data = await drizzleDB
+        .insert(songs)
+        .values({
+          youtubeId: youtubeId,
+          lengthSeconds: lengthSeconds,
+          youtubeTitle: titleData?.youtubeTitle ?? "",
+          youtubeAuthor: titleData?.youtubeAuthor ?? "",
+          spotifyTitle: titleData?.spotifyTitle ?? null,
+          spotifyAuthor: titleData?.spotifyAuthor ?? null,
+        })
+        .onConflictDoUpdate({
+          target: songs.youtubeId,
+          set: {
+            youtubeId: youtubeId,
+            lengthSeconds: lengthSeconds,
+            youtubeTitle: titleData?.youtubeTitle ?? "",
+            youtubeAuthor: titleData?.youtubeAuthor ?? "",
+            spotifyTitle: titleData?.spotifyTitle ?? null,
+            spotifyAuthor: titleData?.spotifyAuthor ?? null,
+          },
+        })
+        .returning();
 
-      await db("song_metadata")
-        .insert(
-          Object.fromEntries(
-            Object.entries(data).filter(([_key, val]) => !!val)
-          )
-        )
-        .onConflict("yt_id")
-        .merge();
-
-      return data;
+      return data[0];
     } catch (e) {
       console.error(e);
       return null;
@@ -133,23 +147,28 @@ class SongMetadataService {
   }
 
   @cache<SongDisplayMetadata>("song-display-metadata")
-  static async getDisplayMetadata(
-    youtubeId: string
-  ): Promise<SongDisplayMetadata | null> {
-    const metadata = (await db("song_metadata")
-      .select(
-        "yt_id",
-        "length_seconds",
-        "yt_title",
-        "yt_author",
-        "spotify_title",
-        "spotify_author"
-      )
-      .where({ yt_id: youtubeId })
-      .whereNotNull("yt_title")
-      .whereNotNull("length_seconds")) as SongDisplayMetadata[];
+  static async getDisplayMetadata(youtubeId: string) {
+    try {
+      const metadata = await drizzleDB
+        .select({
+          id: songs.id,
+          youtubeId: songs.youtubeId,
+          youtubeTitle: songs.youtubeTitle,
+          youtubeAuthor: songs.youtubeAuthor,
+          spotifyId: songs.spotifyId,
+          spotifyTitle: songs.spotifyTitle,
+          spotifyAuthor: songs.spotifyAuthor,
+          lengthSeconds: songs.lengthSeconds,
+        })
+        .from(songs)
+        .where(eq(songs.youtubeId, youtubeId))
+        .execute();
 
-    return metadata?.[0] ?? null;
+      return metadata?.[0] ?? null;
+    } catch (e) {
+      console.error(e);
+      return null;
+    }
   }
 
   @cache<{ title: string; author: string }>("song-title-author")
@@ -162,12 +181,13 @@ class SongMetadataService {
 
     return {
       title:
-        (metadata.spotify_title ? metadata.spotify_title : metadata.yt_title) ??
-        "",
+        (metadata.spotifyTitle
+          ? metadata.spotifyTitle
+          : metadata.youtubeTitle) ?? "",
       author:
-        (metadata.spotify_author
-          ? metadata.spotify_author
-          : metadata.yt_author) ?? "",
+        (metadata.spotifyAuthor
+          ? metadata.spotifyAuthor
+          : metadata.youtubeAuthor) ?? "",
     };
   }
 }

@@ -27,11 +27,11 @@ class AudioResourceManager {
 
     if (
       metadata &&
-      metadata.lufs !== null &&
-      metadata.lufs !== undefined &&
+      metadata.loudnessLufs !== null &&
+      metadata.loudnessLufs !== undefined &&
       audioResource.volume
     ) {
-      const volumeDiff = TARGET_LOUDNESS_LUFS - metadata.lufs;
+      const volumeDiff = TARGET_LOUDNESS_LUFS - metadata.loudnessLufs;
       // console.log(
       //   `Adjusted track by: ${volumeDiff}dB\nOriginal LUFS: ${metadata.lufs}`
       // );
