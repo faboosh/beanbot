@@ -8,6 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "swc src -d dist",
     "start": "bun run build && node ./dist/main.js",
+    "lint": "tsc",
     "api": "npm run build && node ./dist/api/main.js",
     "sync": "npm run build && node ./dist/scripts/sync.js",
     "sandbox": "npm run build && node ./dist/scripts/sandbox.js",
@@ -32,6 +33,7 @@
     "discord.js": "^14.14.1",
     "dotenv": "^16.3.1",
     "dotenv-esm": "^16.0.3-4",
+    "drizzle-orm": "^0.29.3",
     "express": "^4.18.2",
     "fastest-levenshtein": "^1.0.16",
     "gm": "^1.25.0",
@@ -39,6 +41,7 @@
     "knex": "^3.1.0",
     "libsodium-wrappers": "^0.7.13",
     "node-fetch": "^3.3.2",
+    "postgres": "^3.4.3",
     "reflect-metadata": "^0.2.1",
     "socket.io": "^4.7.4",
     "sqlite3": "^5.1.7",
@@ -53,6 +56,7 @@
     "@types/jsonwebtoken": "^9.0.5",
     "@types/msgpack5": "^3.4.6",
     "@types/node": "^20.10.6",
+    "drizzle-kit": "^0.20.13",
     "typescript": "^5.3.3"
   }
 }

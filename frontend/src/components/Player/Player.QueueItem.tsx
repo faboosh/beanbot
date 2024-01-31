@@ -52,14 +52,7 @@ const PlaylistItem = styled.div`
   }
 `;
 
-const PlayerQueueItem = ({
-  item,
-  place,
-}: {
-  item: SongMetadata;
-  place: number;
-}) => {
-  console.log(place);
+const PlayerQueueItem = ({ item }: { item: SongMetadata; place?: number }) => {
   const [userData, setUserData] = useState<any | null>(null);
   const { playlist } = usePlayerContext();
 

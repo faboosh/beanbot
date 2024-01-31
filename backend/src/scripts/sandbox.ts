@@ -1,22 +1,25 @@
-// import { encode } from "@msgpack/msgpack";
-// import { readFileSync, readdirSync, writeFileSync } from "fs";
-const spotifyUrl =
-  "https://open.spotify.com/playlist/0eLy71zrghzGSXEvLvz5TC?si=ce4750728fbf4a48";
-import db from "../db.js";
-import { spotifyPlaylistToYoutubeIds } from "../lib/MusicPlayer/platforms/spotify/playlist.js";
+import e from "express";
+import { encrypt, decryptIfEncrypted } from "../lib/crypto.js";
+
+const wordsArray = [
+  "cybernetic",
+  "neon",
+  "dystopia",
+  "android",
+  "replicant",
+  "hacker",
+  "matrix",
+  "virtual",
+  "augmentation",
+  "synthetic",
+];
+
 const main = async () => {
-  // console.log(await spotifyPlaylistToYoutubeIds(spotifyUrl));
-  const recentPlays = await db("plays")
-    .where("timestamp", ">", Date.now() - 1000 * 60 * 60)
-    .join("song_metadata", "plays.yt_id", "=", "song_metadata.yt_id")
-    .select(
-      "song_metadata.yt_title",
-      "song_metadata.yt_author",
-      "song_metadata.spotify_title",
-      "song_metadata.spotify_author",
-      "plays.yt_id"
-    );
-  console.log(recentPlays);
+  const encrypted = encrypt(wordsArray[0]);
+  console.log(
+    decryptIfEncrypted(encrypted) ==
+      decryptIfEncrypted(decryptIfEncrypted(encrypted))
+  );
   process.exit(0);
 };
 

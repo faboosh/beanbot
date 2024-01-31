@@ -16,17 +16,14 @@ class AudioResourceManager {
       console.log(`Using cached audio resource for "${youtubeId}"`);
       return audioResources[youtubeId];
     }
-    const result = await downloadById(youtubeId);
-    if (!result) return null;
-    const metadata = await SongMetadataService.getOrCreateMetadata(
-      result.details.id
+    const fileName = await downloadById(youtubeId);
+    if (!fileName) return null;
+    const metadata = await SongMetadataService.getOrCreatePlaybackMetadata(
+      youtubeId
     );
-    const audioResource = await createAudioResource(
-      `./download/${result.fileName}`,
-      {
-        inlineVolume: true,
-      }
-    );
+    const audioResource = await createAudioResource(`./download/${fileName}`, {
+      inlineVolume: true,
+    });
 
     if (
       metadata &&

@@ -15,8 +15,6 @@ const generateJWT = (guildId: string, userId: string) => {
 };
 
 const decodeJWT = (token: string): JWTData => {
-  console.log(token);
-  console.log(Date.now());
   const decoded = jwt.decode(token);
   if (!decoded || !jwt.verify(token, secret)) throw new Error("Invalid JWT");
 

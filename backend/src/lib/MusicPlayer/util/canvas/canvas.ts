@@ -54,16 +54,12 @@ async function downloadImage(imageUrl: string): Promise<string | null> {
 
 const downloadThumbnail = async (youtubeId: string) => {
   try {
-    const data = await downloadById(youtubeId);
-    const thumbnail = data?.details.thumbnail?.[0]?.url;
+    const thumbnail = await getThumbnail(youtubeId);
     if (!thumbnail) throw new Error("No thumbnail found");
     const downloadedThumbnail = await downloadImage(thumbnail);
     if (downloadThumbnail === null)
       throw new Error("Failed to download thumbnail");
-    return {
-      data: data,
-      thumbnail: downloadedThumbnail,
-    };
+    return downloadedThumbnail;
   } catch (e) {
     console.error(e);
     return null;
@@ -135,8 +131,7 @@ const toTemp = (instance: gm.State): Promise<string> => {
 
 const generatePlayingCard = (
   youtubeId: string,
-  elapsedSeconds: number = 60,
-  totalSeconds: number = 350
+  elapsedSeconds: number = 60
 ): Promise<string> => {
   if (!existsSync(TMP_DIR)) mkdirSync(TMP_DIR);
   const w = 1000;
@@ -147,6 +142,10 @@ const generatePlayingCard = (
   const maxTitleLen = 30;
 
   return new Promise(async (resolve, reject) => {
+    const totalSeconds =
+      (await SongMetadataService.getDisplayMetadata(youtubeId))
+        ?.length_seconds ?? 0;
+    if (!totalSeconds) throw new Error("Song length not found");
     const thumbnailUrl = await getThumbnail(youtubeId);
     if (!thumbnailUrl) throw new Error("No thumbnail found");
 
@@ -154,9 +153,8 @@ const generatePlayingCard = (
     if (title.length > maxTitleLen)
       title = title.substring(0, maxTitleLen) + "...";
     const outPath = path.join(OUT_DIR, `${youtubeId}.png`);
-    const thumbnailData = await downloadThumbnail(youtubeId);
-    if (!thumbnailData?.thumbnail) return;
-    const { thumbnail } = thumbnailData;
+    const thumbnail = await downloadThumbnail(youtubeId);
+    if (!thumbnail) throw new Error("Could not download thumbnail");
     const blurredThumb = await toTemp(
       gm(thumbnail)
         .modulate(70, 70)
@@ -224,7 +222,6 @@ const generatePlayingCard = (
       .write(outPath, async (err) => {
         await cleanupTemp();
         if (err) reject(err);
-        // console.log("Composite image created:", outPath);
 
         resolve(outPath);
       });

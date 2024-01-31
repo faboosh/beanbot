@@ -1,6 +1,6 @@
 import MusicPlayerState, { getOrCreatePlayerState } from "../state.js";
 import ShuffleManager from "./ShuffleManager.js";
-import { downloadById, getTopResult } from "../platforms/youtube.js";
+import { getThumbnail, getTopResult } from "../platforms/youtube.js";
 import type VoiceConnectionManager from "./VoiceConnectionManager.js";
 import type { PlaylistEntry } from "@shared/types.js";
 import SongMetadataService from "./SongMetadataService.js";
@@ -8,6 +8,7 @@ import {
   searchSpotifyAndGetYoutubeId,
   spotifyPlaylistToYoutubeIds,
 } from "../platforms/spotify/playlist.js";
+import { encrypt } from "../../crypto.js";
 
 const URL_IDENTIFIERS = {
   SPOTIFY_TRACK: "Spotify Track URL",
@@ -54,14 +55,15 @@ class QueueManager {
       this.currentlyPlaying = playlistEntry;
       this.playerState.setState("currentlyPlaying", this.currentlyPlaying);
 
-      const metadata = await SongMetadataService.getOrCreateMetadata(
+      const metadata = await SongMetadataService.getOrCreateDisplayMetadata(
         playlistEntry.id
       );
+      if (!metadata)
+        throw new Error("Could not get metadata for " + playlistEntry.id);
       try {
-        const youtubeData = await downloadById(playlistEntry.id);
         this.playerState.setState(
           "thumbnail",
-          youtubeData?.details.thumbnail[0].url ?? ""
+          await getThumbnail(playlistEntry.id)
         );
       } catch (e) {
         console.error(e);
@@ -90,12 +92,12 @@ class QueueManager {
   async addToPlaylist(entry: PlaylistEntry | PlaylistEntry[]): Promise<void> {
     if (Array.isArray(entry)) {
       for (const playlistEntry of entry) {
-        await SongMetadataService.getOrCreateMetadata(playlistEntry.id);
+        await SongMetadataService.getOrCreateDisplayMetadata(playlistEntry.id);
         this.playlist.push(playlistEntry);
         this.playerState.setState("playlist", this.playlist);
       }
     } else {
-      await SongMetadataService.getOrCreateMetadata(entry.id);
+      await SongMetadataService.getOrCreateDisplayMetadata(entry.id);
       this.playlist.push(entry);
       this.playerState.setState("playlist", this.playlist);
     }
@@ -160,11 +162,11 @@ class QueueManager {
         if (id) result.push(id);
         break;
     }
-
+    const encryptedUserId = userId ? encrypt(userId) : null;
     if (result.length > 1) {
       const first = result.shift() as string;
-      await this.addToPlaylist({ id: first, userId: userId ?? null });
-      this.addToPlaylist(result.map((id) => ({ id, userId: userId ?? null })));
+      await this.addToPlaylist({ id: first, userId: encryptedUserId });
+      this.addToPlaylist(result.map((id) => ({ id, userId: encryptedUserId })));
     }
 
     return result;

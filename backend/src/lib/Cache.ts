@@ -85,7 +85,11 @@ function cache<T>(name: string, durationMs: number = 24 * 60 * 60 * 1000) {
       const dynamicCacheKey = (this as any)?.getCacheKey
         ? (this as any).getCacheKey()
         : null;
-      const cacheKey = dynamicCacheKey ? `${name}-${dynamicCacheKey}` : name;
+
+      const argsKey = `${args ? `-${args.join("-")}` : ""}`;
+      const cacheKey = `${
+        dynamicCacheKey ? `${name}-${dynamicCacheKey}` : name
+      }${argsKey}`;
       if (!caches[cacheKey]) caches[cacheKey] = new Cache<T>(cacheKey);
       const cache = caches[cacheKey];
       if (cache.isValid(cacheKey)) return cache.get(cacheKey);

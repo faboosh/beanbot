@@ -1,4 +1,4 @@
-import { Guild } from "discord.js";
+import { Guild, User } from "discord.js";
 import { getThumbnail, getTopResult } from "./platforms/youtube.js";
 import type { EmbedData } from "../embed.js";
 import InteractionService from "./modules/InteractionService.js";
@@ -7,9 +7,10 @@ import VoiceConnectionManager from "./modules/VoiceConnectionManager.js";
 import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
-import { decrypt } from "../crypto.js";
+import { decryptIfEncrypted } from "../crypto.js";
 import type { a } from "@faboosh/direct-wire-js";
 import SongMetadataService from "./modules/SongMetadataService.js";
+import { cache } from "../Cache.js";
 
 export interface IMusicPlayer {
   queueBySearch(query: string, userId?: string): Promise<EmbedData>;
@@ -209,18 +210,10 @@ class MusicPlayer implements IMusicPlayer {
     try {
       const secondsElapsed =
         this.playbackController.getSecondsSinceStartedPlaying();
-      const metadata = await SongMetadataService.getOrCreateMetadata(
-        currentlyPlaying.id
-      );
-
-      if (!metadata?.length_seconds) {
-        throw new Error("Failed to fetch song length");
-      }
 
       const playingCardPath = await generatePlayingCard(
         currentlyPlaying.id,
-        secondsElapsed,
-        metadata.length_seconds
+        secondsElapsed
       );
 
       return {
@@ -265,6 +258,7 @@ class MusicPlayer implements IMusicPlayer {
     }
   }
 
+  @cache<User[]>("users-who-played")
   async getUsersWhoPlayed(youtubeId: string) {
     try {
       const userIds = await this.interactionService.getUserIdsWhoPlayed(
@@ -275,7 +269,7 @@ class MusicPlayer implements IMusicPlayer {
 
       return await Promise.all(
         userIds.map(async (id) => {
-          return await this.guild.client.users.fetch(id);
+          return await this.guild.client.users.fetch(decryptIfEncrypted(id));
         })
       );
     } catch (e) {
@@ -284,9 +278,10 @@ class MusicPlayer implements IMusicPlayer {
     }
   }
 
+  @cache<User[]>("user-details")
   async getUserDetails(id: string) {
     try {
-      return await this.guild.client.users.fetch(decrypt(id));
+      return await this.guild.client.users.fetch(decryptIfEncrypted(id));
     } catch (e) {
       console.error(e);
       return null;

@@ -27,19 +27,12 @@ const VideoDetailCache = new Cache<any>("youtube-video-details");
 
 const downloadById = async (videoId: string) => {
   const yt = await Innertube.create();
-  let details: any | null;
-  if (VideoDetailCache.isValid(videoId)) {
-    details = VideoDetailCache.get(videoId);
-  } else {
-    details = (await yt.getInfo(videoId)).page[0].video_details ?? null;
-    if (details) VideoDetailCache.set(videoId, details);
-  }
+  let details = await getVideoDetails(videoId);
   if (!details) return;
 
   const filePath = generateFilename(videoId, details.title);
 
-  if (fs.existsSync(filePath.fullPath))
-    return { details, fileName: filePath.fileName };
+  if (fs.existsSync(filePath.fullPath)) return filePath.fileName;
 
   const stream = await yt.download(videoId as string, {
     type: "audio", // audio, video or video+audio
@@ -53,7 +46,7 @@ const downloadById = async (videoId: string) => {
     file.write(chunk);
   }
 
-  return { fileName: filePath.fileName, details };
+  return filePath.fileName;
 };
 
 const getTopResult = async (query: string) => {
@@ -69,10 +62,10 @@ const getTopResult = async (query: string) => {
   return videoId;
 };
 
-const getThumbnail = async (youtubeId: string) => {
-  const result = await downloadById(youtubeId);
+const getThumbnail = async (youtubeId: string): Promise<string> => {
+  const result = await getVideoDetails(youtubeId);
   if (!result) return "";
-  return result.details.thumbnail[0].url;
+  return result.thumbnail[0].url;
 };
 
 const search = async (query: string) => {
@@ -85,9 +78,24 @@ const search = async (query: string) => {
   return res.results.filter((node) => node.type === "Video");
 };
 
+type YoutubeData = {
+  id: string;
+  author: string;
+  title: string;
+  thumbnail: { url: string }[];
+  duration: number;
+};
+
 const getVideoDetails = async (videoId: string) => {
   const yt = await Innertube.create();
-  return (await yt.getInfo(videoId))?.page?.[0]?.video_details ?? null;
+  let details: any | null;
+  if (VideoDetailCache.isValid(videoId)) {
+    details = VideoDetailCache.get(videoId);
+  } else {
+    details = (await yt.getInfo(videoId)).page[0].video_details ?? null;
+    if (details) VideoDetailCache.set(videoId, details);
+  }
+  return details as YoutubeData;
 };
 
 export {

@@ -62,7 +62,7 @@ const start = () => {
 
     if (!player)
       return res.status(400).json({ detail: "No player instance found" });
-    await SongMetadataService.getOrCreateMetadata(id);
+    await SongMetadataService.getOrCreateDisplayMetadata(id);
     player.queueById(id, req.user.userId);
     return res.status(200).json({ detail: "OK" });
   });
@@ -97,7 +97,9 @@ const start = () => {
     const id = req.params.id;
 
     try {
-      const videoDetails = await SongMetadataService.getOrCreateMetadata(id);
+      const videoDetails = await SongMetadataService.getOrCreateDisplayMetadata(
+        id
+      );
       return res.status(200).json(videoDetails);
     } catch (e) {
       console.error(e);

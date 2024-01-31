@@ -1,7 +1,7 @@
 import db from "../../../db.js";
-import { downloadById } from "../platforms/youtube.js";
-import Cache, { cache, type CacheKeyable } from "../../Cache.js";
-import { decrypt, encrypt } from "../../crypto.js";
+import { getVideoDetails } from "../platforms/youtube.js";
+import { cache, type CacheKeyable } from "../../Cache.js";
+import { encrypt } from "../../crypto.js";
 import UserDataService from "../../UserDataService.js";
 
 type Play = {
@@ -42,15 +42,14 @@ class InteractionService implements CacheKeyable {
   ) {
     if (extra?.userId && !(await UserDataService.hasConsented(extra.userId)))
       return;
-    const result = await downloadById(youtubeId);
+    const result = await getVideoDetails(youtubeId);
     if (!result) {
       console.error("Could not log play for YouTube ID", youtubeId);
       return;
     }
     const data = {
-      title: result.details.title,
-      yt_id: result.details.id,
-      filename: result.fileName,
+      title: result.title,
+      yt_id: result.id,
       guild_id: encrypt(this.guildId),
       imported: !!extra?.imported,
       timestamp: extra?.timestamp ?? Date.now(),
@@ -107,7 +106,7 @@ class InteractionService implements CacheKeyable {
 
     if (!user_ids?.[0]) return [];
 
-    return user_ids[0].user_ids.split(",").map(decrypt);
+    return user_ids[0].user_ids.split(",");
   }
 }
 

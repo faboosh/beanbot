@@ -1,6 +1,6 @@
 import { closest, distance } from "fastest-levenshtein";
 import type { Track } from "@spotify/web-api-ts-sdk";
-import { downloadById } from "../youtube.js";
+import { downloadById, getVideoDetails } from "../youtube.js";
 import type { SongMetadata } from "@shared/types.js";
 import { cleanTitle } from "./filters.js";
 import spotify from "./client.js";
@@ -16,8 +16,9 @@ type SpotifyMatch = {
 };
 
 type YoutubeData = {
-  fileName: string;
-  details: any;
+  id: string;
+  author: string;
+  title: string;
 };
 
 const buildSongMetadata = (
@@ -25,9 +26,9 @@ const buildSongMetadata = (
   spotifyMatch?: SpotifyMatch
 ) => {
   const songMetadata: SongMetadata = {
-    yt_id: youtubeData.details.id,
-    yt_title: youtubeData.details.title,
-    yt_author: youtubeData.details.author,
+    yt_id: youtubeData.id,
+    yt_title: youtubeData.title,
+    yt_author: youtubeData.author,
     spotify_author: null,
     spotify_title: null,
     length_seconds: null,
@@ -55,7 +56,7 @@ const calculateDistances = (
   youtubeData: YoutubeData,
   artistTitleList: string[]
 ): SpotifyMatch[] => {
-  return [cleanedTitle, `${youtubeData.details.author} - ${cleanedTitle}`].map(
+  return [cleanedTitle, `${youtubeData.author} - ${cleanedTitle}`].map(
     (title) => {
       const bestMatch = closest(
         title.toLowerCase(),
@@ -121,12 +122,12 @@ const getTitleData = async (
   youtubeId: string
 ): Promise<SongMetadata | null> => {
   try {
-    const youtubeData = await downloadById(youtubeId);
+    const youtubeData = await getVideoDetails(youtubeId);
     if (!youtubeData) {
       throw new Error(`Could not download data for video ${youtubeId}`);
     }
 
-    const cleanedTitle = cleanTitle(youtubeData.details.title);
+    const cleanedTitle = cleanTitle(youtubeData.title);
     if (!cleanedTitle) {
       return buildSongMetadata(youtubeData);
     }

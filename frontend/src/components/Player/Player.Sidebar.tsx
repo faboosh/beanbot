@@ -45,7 +45,6 @@ const PlayerSidebar = () => {
   const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
-    console.log(playlist);
     const timeout = setTimeout(async () => {
       const results = await Promise.all(
         playlist.map(async (entry) => {

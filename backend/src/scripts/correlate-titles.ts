@@ -4,7 +4,10 @@ import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import { closest, distance } from "fastest-levenshtein";
 import db from "../db.js";
 import Cache from "../lib/Cache.js";
-import { downloadById } from "../lib/MusicPlayer/platforms/youtube.js";
+import {
+  downloadById,
+  getVideoDetails,
+} from "../lib/MusicPlayer/platforms/youtube.js";
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
@@ -177,7 +180,7 @@ const main = async () => {
     try {
       const { yt_id, title, cleanedTitle } = cleanedTitles[i];
       console.log(`[${i + 1}/${cleanedTitles.length}]:`, title);
-      const youtubeData = await downloadById(yt_id);
+      const youtubeData = await getVideoDetails(yt_id);
       if (!youtubeData) {
         console.error(
           "Could not download data for video",
@@ -196,7 +199,7 @@ const main = async () => {
       });
       const distances = [
         cleanedTitle,
-        `${youtubeData.details.author} - ${cleanedTitle}`,
+        `${youtubeData.author} - ${cleanedTitle}`,
       ].map((title) => {
         const bestMatch = closest(
           title.toLowerCase(),
@@ -269,9 +272,9 @@ const main = async () => {
         spotify_title: string;
         spotify_author: string;
       } = {
-        yt_id: youtubeData.details.id,
-        yt_title: youtubeData.details.title,
-        yt_author: youtubeData.details.author,
+        yt_id: youtubeData.id,
+        yt_title: youtubeData.title,
+        yt_author: youtubeData.author,
         spotify_title: closeEnough ? closeEnough.bestMatch.title : "",
         spotify_author: closeEnough ? closeEnough.bestMatch.artist : "",
       };

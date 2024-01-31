@@ -30,4 +30,12 @@ const decrypt = (encryptedStr: string) => {
   return bytes.toString(CryptoJS.enc.Utf8);
 };
 
-export { encrypt, decrypt };
+const decryptIfEncrypted = (str: string) => {
+  return isEncrypted(str) ? decrypt(str) : str;
+};
+
+const isEncrypted = (str: string) => {
+  return str.length > 0 && decrypt(str).length !== 0;
+};
+
+export { encrypt, decrypt, isEncrypted, decryptIfEncrypted };

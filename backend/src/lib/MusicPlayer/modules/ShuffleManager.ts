@@ -6,7 +6,7 @@ import type { Play } from "./InteractionService.js";
 import type VoiceConnectionManager from "./VoiceConnectionManager.js";
 import AudioResourceManager from "./AudioResourceManager.js";
 import type { PlaylistEntry } from "@shared/types.js";
-import { decrypt, encrypt } from "../../crypto.js";
+import { decryptIfEncrypted, encrypt } from "../../crypto.js";
 import InteractionService from "./InteractionService.js";
 import perf from "../../perf.js";
 
@@ -67,14 +67,9 @@ class ShuffleManager implements CacheKeyable {
   @perf
   private async filterNotInVoiceChannel(entries: Play[]) {
     const userIds = await this.getCurrentVoiceMembers();
-    console.log("userIds", userIds);
     const filteredEntries = entries.filter((play) => {
       return play.userIds.some((userId) => userIds.includes(userId));
     });
-    console.log(
-      "filterNotInVoiceChannel length after filter",
-      filteredEntries.length
-    );
 
     return filteredEntries;
   }
