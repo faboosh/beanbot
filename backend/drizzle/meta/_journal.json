@@ -1,0 +1,27 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1706708855182,
+      "tag": "0000_dear_lifeguard",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1706709990496,
+      "tag": "0001_wide_penance",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1706711863392,
+      "tag": "0002_nasty_firedrake",
+      "breakpoints": true
+    }
+  ]
+}

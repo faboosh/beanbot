@@ -8,6 +8,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "swc src -d dist",
     "start": "bun run build && node ./dist/main.js",
+    "drizzle:makemigrations": "drizzle-kit generate:pg",
+    "drizzle:migrate": "npm run build && node ./dist/migrate.js",
     "lint": "tsc",
     "api": "npm run build && node ./dist/api/main.js",
     "sync": "npm run build && node ./dist/scripts/sync.js",
@@ -16,6 +18,7 @@
     "correlate-users": "npm run build && node ./dist/scripts/correlate-users.js",
     "build-song-metadata": "npm run build && node ./dist/scripts/build-song-metadata.js",
     "correlate-titles": "npm run build && node ./dist/scripts/correlate-titles.js",
+    "migrate-drizzle": "npm run build && node ./dist/scripts/migrate-drizzle.js",
     "encrypt-userids": "npm run build && node ./dist/scripts/encrypt-userids.js"
   },
   "author": "",
