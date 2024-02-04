@@ -1,6 +1,11 @@
 import { Innertube, Utils } from "youtubei.js";
 import * as fs from "fs";
 import Cache from "../../Cache.js";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { isMP4File } from "../../audioFormat.js";
+import { url } from "inspector";
+import { logMessage } from "../../log.js";
 
 function slugify(str: string) {
   return String(str)
@@ -15,7 +20,7 @@ function slugify(str: string) {
 
 const generateFilename = (videoId: string, videoTitle: string) => {
   const fileName = `${slugify(`${videoTitle}`)}-${videoId}.m4a`;
-  const fullPath = `./download/${fileName}`;
+  const fullPath = `${process.env.DOWNLOAD_FOLDER}/${fileName}`;
 
   return {
     fileName,
@@ -23,30 +28,79 @@ const generateFilename = (videoId: string, videoTitle: string) => {
   };
 };
 
+const proxyUrls = JSON.parse(process.env.YT_PROXY_URLS ?? "null") as string[];
+logMessage(`Proxy urls:`, proxyUrls);
+if (!proxyUrls) throw new Error("No proxy urls found");
+
 const VideoDetailCache = new Cache<any>("youtube-video-details");
 
 const downloadById = async (videoId: string) => {
-  const yt = await Innertube.create();
+  // const yt = await Innertube.create();
   let details = await getVideoDetails(videoId);
-  if (!details) return;
+  if (!details) {
+    logMessage("No video details found");
+    return null;
+  }
 
   const filePath = generateFilename(videoId, details.title);
 
-  if (fs.existsSync(filePath.fullPath)) return filePath.fileName;
+  if (fs.existsSync(filePath.fullPath) && (await isMP4File(filePath.fullPath)))
+    return filePath.fileName;
 
-  const stream = await yt.download(videoId as string, {
-    type: "audio", // audio, video or video+audio
-    quality: "best", // best, bestefficiency, 144p, 240p, 480p, 720p and so on.
-    format: "mp4", // media container format
-  });
+  const data = new FormData();
 
-  const file = fs.createWriteStream(filePath.fullPath);
+  data.set("download_widget", '{"itag":140,"ext":"mp4"}');
+  data.set("title", details.title);
+  data.set("id", details.id);
 
-  for await (const chunk of Utils.streamToIterable(stream)) {
-    file.write(chunk);
+  if (!proxyUrls) throw new Error("No proxy urls found");
+
+  for (const proxyUrl of proxyUrls) {
+    logMessage(`Trying proxy url: ${proxyUrl}`);
+    const res = await fetch(`${proxyUrl}/download`, {
+      method: "POST",
+      body: data,
+    });
+    if (!res.body) throw new Error("No body");
+    const dest = fs.createWriteStream(filePath.fullPath);
+    const nodeReadableStream = Readable.fromWeb(res.body);
+
+    await pipeline(nodeReadableStream, dest);
+    const isMp4 = await isMP4File(filePath.fullPath);
+    logMessage(`isMp4: ${isMp4}`);
+    if (isMp4) return filePath.fileName;
   }
 
-  return filePath.fileName;
+  logMessage("Failed to download file, no proxies returned valid file");
+  return null;
+
+  // const stream = await yt.download(videoId as string, {
+  //   type: "audio", // audio, video or video+audio
+  //   quality: "best", // best, bestefficiency, 144p, 240p, 480p, 720p and so on.
+  //   format: "mp4", // media container format
+  // });
+
+  // let bytesWritten = 0;
+  // let startTime = performance.now();
+  // const file = fs.createWriteStream(filePath.fullPath);
+
+  // for await (const chunk of Utils.streamToIterable(stream)) {
+  //   bytesWritten += chunk.length;
+  //   file.write(chunk);
+  // }
+
+  // file.on("finish", () => {
+  //   let endTime = performance.now();
+  //   let durationInSeconds = (endTime - startTime) / 1000;
+  //   let speedBytesPerSecond = bytesWritten / durationInSeconds;
+  //   let speedKbps = speedBytesPerSecond / 1024;
+
+  //   console.log(`Total bytes written: ${bytesWritten}`);
+  //   console.log(`Total time: ${durationInSeconds.toFixed(2)} seconds`);
+  //   console.log(`Speed: ${speedKbps.toFixed(2)} KB/s`);
+  // });
+
+  // file.end();
 };
 
 const getTopResult = async (query: string) => {

@@ -1,12 +1,12 @@
 import "dotenv-esm/config";
 import CryptoJS from "crypto-js";
 
-const IVString = process.env.encryption_iv;
+const IVString = process.env.ENCRYPTION_IV;
 if (!IVString) throw new Error("No encryption_iv provided");
 const fixedIV = CryptoJS.enc.Hex.parse(IVString);
 
 const getKey = () => {
-  const keyString = process.env.encryption_key;
+  const keyString = process.env.ENCRYPTION_KEY;
   if (!keyString) throw new Error("Encryption key not found");
   return CryptoJS.enc.Hex.parse(keyString); // or use another appropriate encoding
 };

@@ -9,6 +9,7 @@ import {
   ButtonStyle,
 } from "discord.js";
 import UserDataService from "../lib/UserDataService.js";
+import { logMessage } from "../lib/log.js";
 
 const Subcommands = {
   OptOut: "optout",
@@ -128,7 +129,7 @@ const execute = async (interaction: Interaction): Promise<void> => {
 
       // Handle end of collection
       collector.on("end", (collected: any) =>
-        console.log(`Collected ${collected.size} interactions.`)
+        logMessage(`Collected ${collected.size} interactions.`)
       );
 
       break;

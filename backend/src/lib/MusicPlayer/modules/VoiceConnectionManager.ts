@@ -6,6 +6,7 @@ import {
   joinVoiceChannel,
 } from "@discordjs/voice";
 import { Guild, VoiceChannel } from "discord.js";
+import { logMessage } from "../../log.js";
 
 class VoiceConnectionManager {
   private voiceConnection?: VoiceConnection;
@@ -41,7 +42,7 @@ class VoiceConnectionManager {
     });
 
     await entersState(this.voiceConnection, VoiceConnectionStatus.Ready, 5000);
-    console.log(`Voice connection to channel ${this.channelId} ready`);
+    logMessage(`Voice connection to channel ${this.channelId} ready`);
   }
 
   private setConnectedStatus(connectedStatus: boolean) {
@@ -59,11 +60,11 @@ class VoiceConnectionManager {
   }
 
   getGuild() {
-    return this.guild
+    return this.guild;
   }
 
   getVoiceChannelId() {
-    return this.channelId
+    return this.channelId;
   }
 
   async getCurrentVoiceMembers() {
@@ -76,7 +77,7 @@ class VoiceConnectionManager {
   }
 
   getVoiceConnection() {
-    return this.voiceConnection
+    return this.voiceConnection;
   }
 }
 

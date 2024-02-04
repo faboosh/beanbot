@@ -1,5 +1,5 @@
 import { Guild, User } from "discord.js";
-import { getThumbnail, getTopResult } from "./platforms/youtube.js";
+import { getThumbnail } from "./platforms/youtube.js";
 import type { EmbedData } from "../embed.js";
 import InteractionService from "./modules/InteractionService.js";
 import PlaybackController from "./modules/PlaybackController.js";
@@ -8,9 +8,9 @@ import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
 import { decryptIfEncrypted } from "../crypto.js";
-import type { a } from "@faboosh/direct-wire-js";
 import SongMetadataService from "./modules/SongMetadataService.js";
 import { cache } from "../Cache.js";
+import { log, logError, logMessage } from "../log.js";
 
 export interface IMusicPlayer {
   queueBySearch(query: string, userId?: string): Promise<EmbedData>;
@@ -96,7 +96,7 @@ class MusicPlayer implements IMusicPlayer {
       this.playbackController.play(audioResource);
       return playlistEntry;
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }
@@ -105,6 +105,7 @@ class MusicPlayer implements IMusicPlayer {
     return this.queueManager.getCurrentlyPlaying();
   }
 
+  @log
   async queueBySearch(query: string, userId?: string): Promise<EmbedData> {
     const currentlyPlaying = this.getCurrentlyPlaying();
     const currentlyShuffling = this.queueManager.getCurrentlyShuffling();
@@ -144,12 +145,12 @@ class MusicPlayer implements IMusicPlayer {
   async queueById(youtubeId: string, userId: string) {
     AudioResourceManager.createAudioResource(youtubeId)
       .then((audioResource) =>
-        console.log(`created audio resource for "${youtubeId}"`, audioResource)
+        logMessage(`created audio resource for "${youtubeId}"`, audioResource)
       )
       .catch((err) =>
-        console.error(`failed audio resource for "${youtubeId}"`, err)
+        logError(`failed audio resource for "${youtubeId}"`, err)
       );
-    this.queueManager.addToPlaylist({
+    await this.queueManager.addToPlaylist({
       id: youtubeId,
       userId: userId,
     });
@@ -173,7 +174,7 @@ class MusicPlayer implements IMusicPlayer {
           userId: userId,
         });
       } catch (e) {
-        console.error(`Error logging skip: `, e);
+        logError(`Error logging skip: `, e);
       }
     }
     await this.playNext();
@@ -221,13 +222,15 @@ class MusicPlayer implements IMusicPlayer {
       const playingCardPath = await generatePlayingCard(
         currentlyPlaying.id,
         secondsElapsed
-      );
+      ).catch((err) => {
+        throw err;
+      });
 
       return {
         image: playingCardPath,
       };
     } catch (e: any) {
-      console.error(e);
+      logError(e);
       return { title: `Something went wrong: ${e.message}` };
     }
   }
@@ -260,7 +263,7 @@ class MusicPlayer implements IMusicPlayer {
         thumbnail: await getThumbnail(currentlyPlaying.id),
       };
     } catch (e) {
-      console.error(e);
+      logError(e);
       return { title: "Something bwoke UwU" };
     }
   }
@@ -280,7 +283,7 @@ class MusicPlayer implements IMusicPlayer {
         })
       );
     } catch (e) {
-      console.error(e);
+      logError(e);
       return [];
     }
   }
@@ -290,7 +293,7 @@ class MusicPlayer implements IMusicPlayer {
     try {
       return await this.guild.client.users.fetch(decryptIfEncrypted(id));
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }
@@ -299,19 +302,19 @@ class MusicPlayer implements IMusicPlayer {
     const MAX_CHARS = 2000;
     const plays = await this.interactionService.getPlays();
 
-    const sorted = plays.sort((p1, p2) => p2.numPlays - p1.numPlays);
+    const sorted = plays.sort((s1, s2) => s2.plays.length - s1.plays.length);
 
     const reply = [
-      ...sorted.map((play, i) => {
-        return `${i + 1}. ${play.youtubeTitle} (${play.numPlays} plays)`;
+      ...sorted.map((song, i) => {
+        return `${i + 1}. ${song.youtubeTitle} (${song.plays.length} plays)`;
       }),
     ];
 
     for (let i = 0; i < sorted.length; i++) {
-      const play = sorted[i];
-      if (!play) continue;
-      const finalString = `${i + 1}. ${play.youtubeTitle} (${
-        play.numPlays
+      const song = sorted[i];
+      if (!song) continue;
+      const finalString = `${i + 1}. ${song.youtubeTitle} (${
+        song.plays.length
       } plays)\n`;
       if (
         reply.join("\n").length + reply.length + finalString.length + 1 >=
@@ -335,10 +338,9 @@ class MusicPlayer implements IMusicPlayer {
   disconnect() {
     try {
       clearInterval(this.disconnectInterval);
-      this.voiceConnectionManager.destroy();
       destroyPlayer(this.voiceConnectionManager.getGuild());
     } catch (e) {
-      console.error(e);
+      logError(e);
     }
   }
 

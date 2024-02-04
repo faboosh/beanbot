@@ -415,28 +415,36 @@ end = start + segment_length
 
 
 def infer_genre(filename):
-    audio = MonoLoader(filename=filename, sampleRate=sample_rate, resampleQuality=4)()
-    audio = audio[start:end]
+    try:
+        audio = MonoLoader(
+            filename=f"../backend/download/{filename}",
+            sampleRate=sample_rate,
+            resampleQuality=4,
+        )()
+        audio = audio[start:end]
 
-    embedding_model = TensorflowPredictEffnetDiscogs(
-        graphFilename="models/discogs-effnet-bs64-1.pb", output="PartitionedCall:1"
-    )
-    embeddings = embedding_model(audio)
+        embedding_model = TensorflowPredictEffnetDiscogs(
+            graphFilename="models/discogs-effnet-bs64-1.pb", output="PartitionedCall:1"
+        )
+        embeddings = embedding_model(audio)
 
-    model = TensorflowPredict2D(
-        graphFilename="models/genre_discogs400-discogs-effnet-1.pb",
-        input="serving_default_model_Placeholder",
-        output="PartitionedCall:0",
-    )
-    predictions = model(embeddings)
+        model = TensorflowPredict2D(
+            graphFilename="models/genre_discogs400-discogs-effnet-1.pb",
+            input="serving_default_model_Placeholder",
+            output="PartitionedCall:0",
+        )
+        predictions = model(embeddings)
 
-    labled_predictions = sorted(
-        [
-            [labels[i], prediction]
-            for i, prediction in enumerate(predictions.tolist()[0])
-        ],
-        key=lambda arr: arr[1],
-        reverse=True,
-    )
+        labled_predictions = sorted(
+            [
+                [labels[i], prediction]
+                for i, prediction in enumerate(predictions.tolist()[0])
+            ],
+            key=lambda arr: arr[1],
+            reverse=True,
+        )
 
-    return labled_predictions[:10]
+        return labled_predictions[:10]
+    except Exception as e:
+        print(e)
+        return []

@@ -1,3 +1,5 @@
+import { logMessage } from "./log.js";
+
 function perf(
   target: any,
   propertyKey: string,
@@ -13,7 +15,7 @@ function perf(
       return result.then((res) => {
         const end = performance.now();
         const executionTime = Math.round(end - start);
-        console.log(
+        logMessage(
           `Method ${propertyKey} executed in ${executionTime.toFixed(3)} ms`
         );
         return res;
@@ -21,7 +23,7 @@ function perf(
     } else {
       const end = performance.now();
       const executionTime = Math.round(end - start);
-      console.log(
+      logMessage(
         `Method ${propertyKey} executed in ${executionTime.toFixed(3)} ms`
       );
       return result;

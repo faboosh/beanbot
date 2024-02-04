@@ -5,7 +5,7 @@ app = Flask(__name__)
 
 
 @app.route("/infer-genre", methods=["POST"])
-def infer_genre():
+def infer_genre_endpoint():
     data = request.json
     file_path = data.get("filePath")
 

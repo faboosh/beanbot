@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  beanbot-main:
+    image: beanbot-main
+    ports:
+      - "${API_PORT}:3000"
+    volumes:
+      - type: bind
+        source: ${CACHE_VOLUME_PATH}
+        target: ${CACHE_FOLDER}
+      - type: bind
+        source: ${DOWNLOAD_VOLUME_PATH}
+        target: ${DOWNLOAD_FOLDER}
+      - type: bind
+        source: ${IMG_OUT_VOLUME_PATH}
+        target: ${IMG_OUT_FOLDER}
+      - type: bind
+        source: ${IMG_TEMP_VOLUME_PATH}
+        target: ${IMG_TEMP_FOLDER}
+    environment:
+      CACHE_FOLDER: ${CACHE_FOLDER}
+      DOWNLOAD_FOLDER: ${DOWNLOAD_FOLDER}
+      IMG_TEMP_FOLDER: ${IMG_TEMP_FOLDER}
+      IMG_OUT_FOLDER: ${IMG_OUT_FOLDER}
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_APP_ID: ${DISCORD_APP_ID}
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
+      API_PORT: 3000
+      FRONTEND_DOMAIN: ${FRONTEND_DOMAIN}
+      JWT_SECRET: ${JWT_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ENCRYPTION_IV: ${ENCRYPTION_IV} 
+      YT_PROXY_URLS: ${YT_PROXY_URLS}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    restart: unless-stopped
+  db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+    volumes:
+      - type: bind
+        source: ${POSTGRES_VOLUME_PATH}
+        target: /var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    restart: unless-stopped

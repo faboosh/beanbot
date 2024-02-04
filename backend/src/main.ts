@@ -8,9 +8,10 @@ import {
   ButtonInteraction,
 } from "discord.js";
 import { parseButtonInteraction } from "./lib/util.js";
+import { logError, logMessage } from "./lib/log.js";
 
 const main = async () => {
-  const token = process.env.token;
+  const token = process.env.DISCORD_TOKEN;
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
@@ -21,7 +22,7 @@ const main = async () => {
   });
 
   client.once(Events.ClientReady, (readyClient) => {
-    console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+    logMessage(`Ready! Logged in as ${readyClient.user.tag}`);
   });
 
   client.login(token);
@@ -41,7 +42,7 @@ const main = async () => {
         // @ts-ignore
         await commands?.[command]?.execute(interaction);
       } catch (e) {
-        console.error(e);
+        logError(e);
         if (interaction.isRepliable())
           interaction.editReply({ content: "Something went HORRIBLY wrong" });
       }

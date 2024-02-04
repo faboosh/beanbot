@@ -1,17 +1,16 @@
-import { Guild, VoiceChannel } from "discord.js";
-import db from "../../../db.js";
-import Cache, { type CacheKeyable } from "../../Cache.js";
+import { type CacheKeyable } from "../../Cache.js";
 import PlayHistory from "./PlayHistory.js";
-import type { Play } from "./InteractionService.js";
 import type VoiceConnectionManager from "./VoiceConnectionManager.js";
 import AudioResourceManager from "./AudioResourceManager.js";
 import type { PlaylistEntry } from "@shared/types.js";
-import { decryptIfEncrypted, encrypt } from "../../crypto.js";
+import { encrypt } from "../../crypto.js";
 import InteractionService from "./InteractionService.js";
 import perf from "../../perf.js";
+import { log, logError, logMessage } from "../../log.js";
+import type { SongWithPlaysAndSkips } from "../../../schema.js";
 
-type WeightedPlay = {
-  play: Play;
+type WeightedSongWithPlaysAndSkips = {
+  song: SongWithPlaysAndSkips;
   weight: { val: number; key: string }[];
 };
 
@@ -56,7 +55,7 @@ class ShuffleManager implements CacheKeyable {
   }
 
   @perf
-  private filterNotRecentlyPlayed(entries: Play[]) {
+  private filterNotRecentlyPlayed(entries: SongWithPlaysAndSkips[]) {
     const filteredEntries = entries.filter((play) => {
       return !this.playHistory.isInHistory(play.youtubeId as string);
     });
@@ -65,17 +64,17 @@ class ShuffleManager implements CacheKeyable {
   }
 
   @perf
-  private async filterNotInVoiceChannel(entries: Play[]) {
+  private async filterNotInVoiceChannel(entries: SongWithPlaysAndSkips[]) {
     const userIds = await this.getCurrentVoiceMembers();
-    const filteredEntries = entries.filter((play) => {
-      return play.playedBy.some((userId) => userIds.includes(userId));
+    const filteredEntries = entries.filter((song) => {
+      return song.plays.some(({ userId }) => userIds.includes(userId));
     });
 
     return filteredEntries;
   }
 
   @perf
-  private filterTooLongOrShort(entries: Play[]) {
+  private filterTooLongOrShort(entries: SongWithPlaysAndSkips[]) {
     const filteredEntries = entries.filter((play) => {
       if (play.lengthSeconds === null) return true;
       return (
@@ -87,11 +86,13 @@ class ShuffleManager implements CacheKeyable {
   }
 
   @perf
-  private weightByNumMembersPlayedCount(entries: WeightedPlay[]) {
+  private weightByNumMembersPlayedCount(
+    entries: WeightedSongWithPlaysAndSkips[]
+  ) {
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
       entry.weight.push({
-        val: entry.play.playedBy.length * this.NUM_MEMBERS_PLAYED_MULTIPLIER,
+        val: entry.song.plays.length * this.NUM_MEMBERS_PLAYED_MULTIPLIER,
         key: "number of members played",
       });
     }
@@ -99,7 +100,7 @@ class ShuffleManager implements CacheKeyable {
   }
 
   @perf
-  private weightByPopularityOverTime(entries: WeightedPlay[]) {
+  private weightByPopularityOverTime(entries: WeightedSongWithPlaysAndSkips[]) {
     const now = Date.now();
     const oneYear = 365 * 24 * 60 * 60 * 1000;
     const oneMonthMs = Math.round(oneYear / 12);
@@ -109,8 +110,8 @@ class ShuffleManager implements CacheKeyable {
 
       const inMonths: number[] = [];
 
-      for (let i = 0; i < entry.play.playedAt.length; i++) {
-        const timestamp = entry.play.playedAt[i];
+      for (let i = 0; i < entry.song.plays.length; i++) {
+        const timestamp = entry.song.plays[i].timestamp;
         const timeAgo = now - timestamp.getTime();
         const monthsAgo = Math.floor(timeAgo / oneMonthMs);
         if (!inMonths.includes(monthsAgo)) inMonths.push(monthsAgo);
@@ -126,7 +127,7 @@ class ShuffleManager implements CacheKeyable {
   }
 
   @perf
-  private weightBySongLength(entries: WeightedPlay[]) {
+  private weightBySongLength(entries: WeightedSongWithPlaysAndSkips[]) {
     function linearFalloff(
       value: number,
       min: number,
@@ -146,10 +147,10 @@ class ShuffleManager implements CacheKeyable {
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
-      if (entry.play.lengthSeconds === null) continue;
+      if (entry.song.lengthSeconds === null) continue;
 
       const multiplier = linearFalloff(
-        entry.play.lengthSeconds,
+        entry.song.lengthSeconds,
         this.MIN_SONG_LEN_SECONDS,
         this.IDEAL_SONG_LEN_SECONDS,
         this.MAX_SONG_LEN_SECONDS
@@ -169,14 +170,15 @@ class ShuffleManager implements CacheKeyable {
       this.nextId = nextId;
       if (nextId) {
         AudioResourceManager.createAudioResource(nextId)
-          .then(() => console.log(`Created audio resource for "${nextId}"`))
+          .then(() => logMessage(`Created audio resource for "${nextId}"`))
           .catch((e) =>
-            console.error(`Failed to create audio resource for "${nextId}"`, e)
+            logError(`Failed to create audio resource for "${nextId}"`, e)
           );
       }
     });
   }
 
+  @log
   async getNext(): Promise<PlaylistEntry> {
     if (this.nextId) {
       const nextId = this.nextId;
@@ -196,6 +198,7 @@ class ShuffleManager implements CacheKeyable {
     };
   }
 
+  @log
   @perf
   private async computeNext() {
     try {
@@ -204,11 +207,11 @@ class ShuffleManager implements CacheKeyable {
       filteredPlays = this.filterTooLongOrShort(filteredPlays);
       filteredPlays = await this.filterNotInVoiceChannel(filteredPlays);
 
-      let weightedPlays = filteredPlays.map((play) => {
+      let weightedPlays = filteredPlays.map((song) => {
         return {
           weight: [],
-          play,
-        } as WeightedPlay;
+          song,
+        } as WeightedSongWithPlaysAndSkips;
       });
 
       weightedPlays = this.weightByNumMembersPlayedCount(weightedPlays);
@@ -217,14 +220,15 @@ class ShuffleManager implements CacheKeyable {
       const weightsArr = weightedPlays.flatMap((entry) =>
         Array(entry.weight.reduce((acc, val) => acc + val.val, 0))
           .fill(null)
-          .map(() => entry.play.youtubeId)
+          .map(() => entry.song.youtubeId)
       );
-      const nextId = weightsArr[Math.round(Math.random() * weightsArr.length)];
+      const nextId =
+        weightsArr[Math.round(Math.random() * (weightsArr.length - 1))];
       if (!nextId) return null;
 
       return nextId;
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }

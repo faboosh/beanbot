@@ -40,5 +40,33 @@ const getPlayerState = (guildId: string) => {
   return states.get(guildId);
 };
 
-export { createPlayerState, getOrCreatePlayerState, getPlayerState };
+function PublishStateChange(stateProp: string) {
+  return function (target: any, propertyName: string) {
+    let value: any = target[propertyName];
+
+    const getter = () => {
+      return value;
+    };
+
+    const setter = (newValue: any) => {
+      value = newValue;
+      // Assuming playerState has a method called `setState` to update its state
+      target.playerState.setState(stateProp, newValue);
+    };
+
+    Object.defineProperty(target, propertyName, {
+      get: getter,
+      set: setter,
+      enumerable: true,
+      configurable: true,
+    });
+  };
+}
+
+export {
+  createPlayerState,
+  getOrCreatePlayerState,
+  getPlayerState,
+  PublishStateChange,
+};
 export default MusicPlayerState;

@@ -1,3 +1,4 @@
+import { logError } from "../../../log.js";
 import { downloadById, getTopResult } from "../youtube.js";
 import spotify from "./client.js";
 
@@ -27,7 +28,7 @@ const spotifyPlaylistToYoutubeIds = async (playlistUrl: string) => {
 
     return youtubeIds;
   } catch (e) {
-    console.error(e);
+    logError(e);
     return [];
   }
 };
@@ -43,7 +44,7 @@ const searchSpotifyAndGetYoutubeId = async (query: string) => {
     const youtubeId = await getTopResult(concatinated);
     return youtubeId ?? null;
   } catch (e) {
-    console.error(e);
+    logError(e);
     return null;
   }
 };

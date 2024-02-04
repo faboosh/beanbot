@@ -4,6 +4,7 @@ import { getVideoDetails } from "../youtube.js";
 import { cleanTitle } from "./filters.js";
 import spotify from "./client.js";
 import type { CreateSong } from "../../../../schema.js";
+import { logError } from "../../../log.js";
 
 type SpotifyMatch = {
   youtubeTitle: string;
@@ -141,7 +142,7 @@ const getTitleData = async (youtubeId: string): Promise<CreateSong | null> => {
 
     return buildSongMetadata(youtubeData, closeEnoughMatch);
   } catch (e) {
-    console.error(e);
+    logError(e);
     return null;
   }
 };

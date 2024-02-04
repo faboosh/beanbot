@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzleDB } from "../db.js";
 import { dataConsent, plays, skips, songs } from "../schema.js";
 import { encrypt } from "./crypto.js";
+import { logError } from "./log.js";
 
 class UserDataService {
   static async deleteUserData(userId: string) {
@@ -10,7 +11,7 @@ class UserDataService {
       await drizzleDB.delete(skips).where(eq(skips.userId, encrypt(userId)));
       return true;
     } catch (e) {
-      console.error(e);
+      logError(e);
       return false;
     }
   }

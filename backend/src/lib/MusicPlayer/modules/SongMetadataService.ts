@@ -9,7 +9,11 @@ import { downloadById, getVideoDetails } from "../platforms/youtube.js";
 import { getLoudness } from "../util/ffmpeg.js";
 import { getTitleData } from "../platforms/spotify/index.js";
 import { songs } from "../../../schema.js";
-import { eq } from "drizzle-orm";
+import { eq, exists } from "drizzle-orm";
+import { logError, logMessage } from "../../log.js";
+import AsyncTaskQueue from "../../queue.js";
+import { existsSync } from "fs";
+import { isMP4File } from "../../audioFormat.js";
 
 class MoodGenreService {
   static async createGenre(name: string): Promise<void> {
@@ -32,10 +36,27 @@ class MoodGenreService {
   }
 }
 
+const displayMetadataQueue = new AsyncTaskQueue<{
+  id: string;
+  youtubeId: string;
+  youtubeTitle: string | null;
+  youtubeAuthor: string | null;
+  spotifyId: string | null;
+  spotifyTitle: string | null;
+  spotifyAuthor: string | null;
+  lengthSeconds: number | null;
+} | null>();
+const playbackMetadataQueue = new AsyncTaskQueue<{
+  id: string;
+  loudnessLufs: number | null;
+  fileName: string | null;
+  lengthSeconds: number | null;
+} | null>();
+
 class SongMetadataService {
   static baseUrl = "http://localhost:5000";
 
-  static async inferGenre(filePath: string): Promise<any> {
+  static async inferGenre(filePath: string): Promise<[string, number][]> {
     const response = await fetch(`${this.baseUrl}/infer-genre`, {
       method: "POST",
       headers: {
@@ -48,21 +69,48 @@ class SongMetadataService {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    return await response.json();
+    return (await response.json()) as [string, number][];
+  }
+
+  private static async alreadyDownloadedAndIsValid(fileName: string) {
+    return (
+      existsSync(`${process.env.DOWNLOAD_FOLDER}/${fileName}`) &&
+      isMP4File(`${process.env.DOWNLOAD_FOLDER}/${fileName}`)
+    );
   }
 
   static async getOrCreatePlaybackMetadata(youtubeId: string) {
+    // return playbackMetadataQueue.enqueue(youtubeId, async () => {
     const metadata = await this.getPlaybackMetadata(youtubeId);
     if (metadata) return metadata;
     return await this.createPlaybackMetadata(youtubeId);
+    // });
   }
 
-  static async createPlaybackMetadata(youtubeId: string) {
+  private static async createPlaybackMetadata(youtubeId: string) {
     try {
-      const fileName = await downloadById(youtubeId);
-      if (!fileName) throw new Error("Could not download");
+      logMessage(`Creating playback metadata for ${youtubeId}`);
+      const existingData = await this.getPlaybackMetadata(youtubeId);
+      const alreadyDownloaded =
+        existingData?.fileName &&
+        (await this.alreadyDownloadedAndIsValid(existingData.fileName));
 
-      const lufs = (await getLoudness(fileName)) as number;
+      logMessage(alreadyDownloaded ? "Already downloaded" : "Downloading...");
+      const fileName = alreadyDownloaded
+        ? existingData.fileName
+        : await downloadById(youtubeId);
+      if (!fileName) {
+        logError("Could not download");
+        return null;
+      }
+
+      const hasLoudness = existingData?.loudnessLufs !== null;
+      logMessage(
+        hasLoudness ? "Using existing loudness" : "Calculating loudness"
+      );
+      const lufs = hasLoudness
+        ? existingData?.loudnessLufs
+        : ((await getLoudness(fileName)) as number);
 
       const data = await drizzleDB
         .insert(songs)
@@ -82,13 +130,13 @@ class SongMetadataService {
 
       return data[0];
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }
 
   @cache<SongPlaybackMetadata>("song-playback-metadata")
-  static async getPlaybackMetadata(youtubeId: string) {
+  private static async getPlaybackMetadata(youtubeId: string) {
     const metadata = await drizzleDB
       .select({
         id: songs.id,
@@ -100,17 +148,26 @@ class SongMetadataService {
       .where(eq(songs.youtubeId, youtubeId))
       .execute();
 
-    return metadata?.[0] ?? null;
+    if (
+      metadata?.[0]?.fileName &&
+      (await this.alreadyDownloadedAndIsValid(metadata?.[0]?.fileName))
+    )
+      return metadata?.[0];
+
+    return null;
   }
 
   static async getOrCreateDisplayMetadata(youtubeId: string) {
+    // return displayMetadataQueue.enqueue(youtubeId, async () => {
     const metadata = await this.getDisplayMetadata(youtubeId);
     if (metadata) return metadata;
     return await this.createDisplayMetadata(youtubeId);
+    // });
   }
 
-  static async createDisplayMetadata(youtubeId: string) {
+  private static async createDisplayMetadata(youtubeId: string) {
     try {
+      logMessage(`Creating display metadata for ${youtubeId}`);
       const result = await getVideoDetails(youtubeId);
       if (!result) throw new Error("Could not download");
       const lengthSeconds = result.duration;
@@ -141,13 +198,13 @@ class SongMetadataService {
 
       return data[0];
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }
 
   @cache<SongDisplayMetadata>("song-display-metadata")
-  static async getDisplayMetadata(youtubeId: string) {
+  private static async getDisplayMetadata(youtubeId: string) {
     try {
       const metadata = await drizzleDB
         .select({
@@ -166,7 +223,7 @@ class SongMetadataService {
 
       return metadata?.[0] ?? null;
     } catch (e) {
-      console.error(e);
+      logError(e);
       return null;
     }
   }
@@ -175,8 +232,7 @@ class SongMetadataService {
   static async getTitleAuthor(
     youtubeId: string
   ): Promise<{ title: string; author: string }> {
-    let metadata = await this.getDisplayMetadata(youtubeId);
-    if (!metadata) metadata = await this.createDisplayMetadata(youtubeId);
+    let metadata = await this.getOrCreateDisplayMetadata(youtubeId);
     if (!metadata) throw new Error("Could not get metadata");
 
     return {

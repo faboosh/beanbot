@@ -1,6 +1,7 @@
 import "dotenv-esm/config";
 import fs from "fs";
 import db from "../db.js";
+import { logMessage } from "../lib/log.js";
 
 const main = async () => {
   const plays = await db("plays").select("*").where("imported", "=", true);
@@ -26,7 +27,7 @@ const main = async () => {
     const updatedData = {
       user_id: message.authorId,
     };
-    console.log("Updated play ", play, " with user id ", message.authorId);
+    logMessage("Updated play ", play, " with user id ", message.authorId);
     await db("plays").where({ id: play.id }).update(updatedData);
   }
   process.exit(0);

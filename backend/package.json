@@ -7,7 +7,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "swc src -d dist",
-    "start": "bun run build && node ./dist/main.js",
+    "start": "npm run build && node ./dist/main.js",
     "drizzle:makemigrations": "drizzle-kit generate:pg",
     "drizzle:migrate": "npm run build && node ./dist/migrate.js",
     "lint": "tsc",
@@ -19,9 +19,12 @@
     "build-song-metadata": "npm run build && node ./dist/scripts/build-song-metadata.js",
     "correlate-titles": "npm run build && node ./dist/scripts/correlate-titles.js",
     "migrate-drizzle": "npm run build && node ./dist/scripts/migrate-drizzle.js",
-    "encrypt-userids": "npm run build && node ./dist/scripts/encrypt-userids.js"
+    "encrypt-userids": "npm run build && node ./dist/scripts/encrypt-userids.js",
+    "check-valid-audio": "npm run build && node ./dist/scripts/check-valid-audio.js",
+    "generate-genres": "npm run build && node ./dist/scripts/generate-genres.js",
+    "download-yt": "npm run build && node ./dist/scripts/download-yt.js"
   },
-  "author": "",
+  "author": "faboosh",
   "license": "ISC",
   "dependencies": {
     "@discordjs/opus": "^0.9.0",
@@ -39,17 +42,19 @@
     "drizzle-orm": "^0.29.3",
     "express": "^4.18.2",
     "fastest-levenshtein": "^1.0.16",
+    "file-type": "^19.0.0",
     "gm": "^1.25.0",
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
     "libsodium-wrappers": "^0.7.13",
     "node-fetch": "^3.3.2",
     "postgres": "^3.4.3",
+    "read-chunk": "^4.0.3",
     "reflect-metadata": "^0.2.1",
     "socket.io": "^4.7.4",
     "sqlite3": "^5.1.7",
     "uuid": "^9.0.1",
-    "youtubei.js": "^8.1.0"
+    "youtubei.js": "^9.0.2"
   },
   "devDependencies": {
     "@swc/cli": "^0.1.65",

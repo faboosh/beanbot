@@ -8,8 +8,9 @@ import {
   getTopResult,
 } from "../lib/MusicPlayer/platforms/youtube.js";
 import InteractionService from "../lib/MusicPlayer/modules/InteractionService.js";
+import { logError, logMessage } from "../lib/log.js";
 
-const token = process.env.token;
+const token = process.env.DISCORD_TOKEN;
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -21,8 +22,8 @@ const client = new Client({
 });
 const channelId = "837399202819604543";
 const guildId = "836017459982106714";
-const clientID = process.env.spotify_client_id;
-const clientSecret = process.env.spotify_client_secret;
+const clientID = process.env.SPOTIFY_CLIENT_ID;
+const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 if (!clientID || !clientSecret)
   throw new Error("Spotify Client ID or Client Secret missing");
 
@@ -44,7 +45,7 @@ async function getMessages(
     sum_messages.push(...messages);
     last_id = messages.last().id;
 
-    console.log(`${sum_messages.length} messages...`);
+    logMessage(`${sum_messages.length} messages...`);
 
     if (messages.size != 100 || sum_messages.length >= limit) {
       break;
@@ -202,7 +203,7 @@ const urlParsers: URLParser[] = [
 
         return `${name} ${artists}`;
       } catch (e) {
-        console.error(e);
+        logError(e);
         return null;
       }
     },
@@ -215,7 +216,7 @@ const getQueryFromMessage = async (message: Message) => {
     const parser = messageParsers[i];
 
     if (!parser.test(message)) continue;
-    console.log(`Parsing entry from bot ${parser.name}`);
+    logMessage(`Parsing entry from bot ${parser.name}`);
     try {
       const result = parser.parse(message)?.trim();
       if (!result) return null;
@@ -224,15 +225,15 @@ const getQueryFromMessage = async (message: Message) => {
         const urlParser = urlParsers[i];
         if (!urlParser.test(result)) continue;
         try {
-          console.log(`Trying to parse URL of type ${urlParser.name}`);
+          logMessage(`Trying to parse URL of type ${urlParser.name}`);
           return await urlParser.parse(result);
         } catch (e) {
-          console.error(e);
+          logError(e);
         }
       }
     } catch (e) {
-      console.error(`Failed parsing entry from bot ${parser.name}`);
-      console.error(e);
+      logError(`Failed parsing entry from bot ${parser.name}`);
+      logError(e);
       return null;
     }
   }
@@ -256,11 +257,11 @@ const interactionService = new InteractionService(guildId);
 
 const parseMessage = async (msg: Message) => {
   const content = await getQueryFromMessage(msg);
-  if (!content) return console.error("No viable query found");
+  if (!content) return logError("No viable query found");
   let id = getYoutubeVideoId(content);
   if (!id) id = await getTopResult(content);
-  if (!id) return console.error("No youtube ID found");
-  console.log(`Starting download for id ${id} with search "${content}"`);
+  if (!id) return logError("No youtube ID found");
+  logMessage(`Starting download for id ${id} with search "${content}"`);
   const result = await downloadById(id);
 
   if (!result) return console.warn(`Failed download for id ${id}`);
@@ -277,11 +278,11 @@ const parseMessage = async (msg: Message) => {
     timestamp: new Date(msg.createdTimestamp),
   });
 
-  console.log(`Finished download for id ${id}`);
+  logMessage(`Finished download for id ${id}`);
 };
 
 client.once(Events.ClientReady, async (readyClient) => {
-  console.log(`Ready! Logged in as ${readyClient.user.tag}`);
+  logMessage(`Ready! Logged in as ${readyClient.user.tag}`);
   if (!fs.existsSync("./messages.json")) await downloadMessages();
 
   const messages: [string, Message][] = JSON.parse(
@@ -295,7 +296,7 @@ client.once(Events.ClientReady, async (readyClient) => {
       const message = messagesClean[i];
       await withTimeout(() => parseMessage(message), 15000);
     } catch (e) {
-      console.error(e);
+      logError(e);
     }
   }
 });

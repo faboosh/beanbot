@@ -5,18 +5,24 @@ import { fileURLToPath } from "url";
 import path from "path";
 import axios from "axios";
 import { randomUUID } from "crypto";
-import { downloadById, getThumbnail } from "../../platforms/youtube.js";
+import { getThumbnail } from "../../platforms/youtube.js";
 import { getPrimitive as c } from "../../../colorsystem.js";
 import { secondsToTimestamp } from "../../../util.js";
 import SongMetadataService from "../../modules/SongMetadataService.js";
+import { logError, logMessage } from "../../../log.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const TMP_DIR = path.join(__dirname, "../../../../../", "temp/");
-const OUT_DIR = path.join(__dirname, "../../../../../", "images/");
+const TMP_DIR = process.env.IMG_TEMP_FOLDER as string;
+const OUT_DIR = process.env.IMG_OUT_FOLDER as string;
 
-console.log("Image dirs: ", { TMP_DIR, OUT_DIR });
+if (!TMP_DIR || !OUT_DIR)
+  throw new Error(
+    "Missing environment variables for image generation, make sure to set IMG_TEMP_FOLDER and IMG_OUT_FOLDER"
+  );
+
+logMessage("Image dirs: ", { TMP_DIR, OUT_DIR });
 const SplineSans = "./assets/SplineSansMono-Medium.ttf";
 
 async function downloadImage(imageUrl: string): Promise<string | null> {
@@ -47,7 +53,7 @@ async function downloadImage(imageUrl: string): Promise<string | null> {
 
     return output;
   } catch (error) {
-    console.error("Error downloading the image:", error);
+    logError("Error downloading the image:", error);
     return null;
   }
 }
@@ -61,7 +67,7 @@ const downloadThumbnail = async (youtubeId: string) => {
       throw new Error("Failed to download thumbnail");
     return downloadedThumbnail;
   } catch (e) {
-    console.error(e);
+    logError(e);
     return null;
   }
 };
@@ -119,7 +125,7 @@ const toTemp = (instance: gm.State): Promise<string> => {
   return new Promise((resolve, reject) => {
     instance.write(outPath, (err) => {
       if (err) {
-        console.error("Error:", err);
+        logError("Error:", err);
         reject(err);
       } else {
         tempPaths.push(outPath);
@@ -143,7 +149,7 @@ const generatePlayingCard = (
 
   return new Promise(async (resolve, reject) => {
     const totalSeconds =
-      (await SongMetadataService.getDisplayMetadata(youtubeId))
+      (await SongMetadataService.getOrCreateDisplayMetadata(youtubeId))
         ?.lengthSeconds ?? 0;
     if (!totalSeconds) throw new Error("Song length not found");
     const thumbnailUrl = await getThumbnail(youtubeId);

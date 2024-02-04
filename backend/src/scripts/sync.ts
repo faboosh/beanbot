@@ -1,9 +1,10 @@
 import "dotenv-esm/config";
 import { REST, Routes } from "discord.js";
 import commands from "../commands/index.js";
+import { logError, logMessage } from "../lib/log.js";
 
-const token = process.env.token;
-const appId = process.env.app_id;
+const token = process.env.DISCORD_TOKEN;
+const appId = process.env.DISCORD_APP_ID;
 
 if (!token || !appId) throw new Error("missing credentials");
 
@@ -19,7 +20,7 @@ const rest = new REST().setToken(token);
 // and deploy your commands!
 (async () => {
   try {
-    console.log(
+    logMessage(
       `Started refreshing ${payload.length} application (/) commands.`
     );
 
@@ -28,13 +29,13 @@ const rest = new REST().setToken(token);
       body: payload,
     })) as any;
 
-    console.log(data);
+    logMessage(data);
 
-    console.log(
+    logMessage(
       `Successfully reloaded ${data.length} application (/) commands.`
     );
   } catch (error) {
     // And of course, make sure you catch and log any errors!
-    console.error(error);
+    logError(error);
   }
 })();

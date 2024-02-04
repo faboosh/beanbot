@@ -4,23 +4,21 @@ import { SpotifyApi } from "@spotify/web-api-ts-sdk";
 import { closest, distance } from "fastest-levenshtein";
 import db from "../db.js";
 import Cache from "../lib/Cache.js";
-import {
-  downloadById,
-  getVideoDetails,
-} from "../lib/MusicPlayer/platforms/youtube.js";
+import { getVideoDetails } from "../lib/MusicPlayer/platforms/youtube.js";
+import { logError, logMessage } from "../lib/log.js";
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  logError("Unhandled Rejection at:", promise, "reason:", reason);
   // Application specific logging, throwing an error, or other logic here
 });
 
 process.on("uncaughtException", (error) => {
-  console.error("Uncaught Exception:", error);
+  logError("Uncaught Exception:", error);
   // Application specific logging, throwing an error, or other logic here
 });
 
-const clientID = process.env.spotify_client_id;
-const clientSecret = process.env.spotify_client_secret;
+const clientID = process.env.SPOTIFY_CLIENT_ID;
+const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
 const SpotifyCache = new Cache("spotify-data");
 
@@ -179,15 +177,10 @@ const main = async () => {
   for (let i = 0; i < cleanedTitles.length; i++) {
     try {
       const { yt_id, title, cleanedTitle } = cleanedTitles[i];
-      console.log(`[${i + 1}/${cleanedTitles.length}]:`, title);
+      logMessage(`[${i + 1}/${cleanedTitles.length}]:`, title);
       const youtubeData = await getVideoDetails(yt_id);
       if (!youtubeData) {
-        console.error(
-          "Could not download data for video",
-          title,
-          "with id",
-          yt_id
-        );
+        logError("Could not download data for video", title, "with id", yt_id);
         continue;
       }
       const result = await spotify.search(cleanedTitle, ["track"]);
@@ -281,7 +274,7 @@ const main = async () => {
 
       await db("song_metadata").insert(dbData).onConflict("yt_id").merge();
     } catch (e) {
-      console.error(e);
+      logError(e);
     }
   }
 

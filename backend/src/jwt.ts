@@ -1,6 +1,6 @@
 import "dotenv-esm/config";
 import jwt from "jsonwebtoken";
-const secret = process.env.jwt_secret;
+const secret = process.env.JWT_SECRET;
 if (!secret) throw new Error("jwt_secret not set in .env");
 
 type JWTData = {

@@ -20,6 +20,7 @@ import MusicPlayer, {
   getOrCreatePlayer,
 } from "../lib/MusicPlayer/index.js";
 import { generateJWT } from "../jwt.js";
+import { logError, logMessage } from "../lib/log.js";
 
 const Subcommands = {
   Play: "play",
@@ -127,7 +128,7 @@ const getLatestMessage = async (guild: Guild) => {
 
     return message;
   } catch (e) {
-    console.error(e);
+    logError(e);
     return null;
   }
 };
@@ -179,7 +180,7 @@ const execute = async (interaction: Interaction): Promise<void> => {
   const player = getOrCreatePlayer(guild, voiceId);
 
   if (voiceId !== player.getChannelId()) {
-    console.log("Interaction not from same channel");
+    logMessage("Interaction not from same channel");
     await interaction.editReply({
       content: "You must be in the same voice channel to interact with the bot",
     });
@@ -198,7 +199,7 @@ const execute = async (interaction: Interaction): Promise<void> => {
 
   if (subcommand === Subcommands.WebUI) {
     interaction.reply({
-      content: `${process.env.frontend_domain}?jwt=${generateJWT(
+      content: `${process.env.FRONTEND_DOMAIN}?jwt=${generateJWT(
         interaction.guild.id,
         interaction.user.id
       )}`,

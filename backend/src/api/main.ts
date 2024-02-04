@@ -11,10 +11,11 @@ import { getPlayer } from "../lib/MusicPlayer/MusicPlayer.js";
 import { search } from "../lib/MusicPlayer/platforms/youtube.js";
 import cors from "cors";
 import SongMetadataService from "../lib/MusicPlayer/modules/SongMetadataService.js";
+import { logError, logMessage } from "../lib/log.js";
 
 const start = () => {
   const app = express();
-  const port = process.env.api_port;
+  const port = process.env.API_PORT;
   const publicPath = path.join("../frontend/", "dist");
   const server = createServer(app);
   const io = new Server(server, {
@@ -88,7 +89,7 @@ const start = () => {
       const results = await search(searchTerm);
       return res.status(200).json(results);
     } catch (e) {
-      console.error(e);
+      logError(e);
       return res.status(500).json({ detail: "Something went wrong" });
     }
   });
@@ -102,7 +103,7 @@ const start = () => {
       );
       return res.status(200).json(videoDetails);
     } catch (e) {
-      console.error(e);
+      logError(e);
       return res.status(500).json({ detail: "Something went wrong" });
     }
   });
@@ -142,7 +143,7 @@ const start = () => {
   });
 
   server.listen(port, () => {
-    console.log(`API running on port ${port}`);
+    logMessage(`API running on port ${port}`);
   });
 
   io.on("connection", async (socket) => {
@@ -154,19 +155,19 @@ const start = () => {
       const { guildId, userId } = await decodeJWT(token as string);
       const state = getOrCreatePlayerState(guildId);
       socket.join(guildId);
-      console.log(`${userId} connected`);
+      logMessage(`${userId} connected`);
       io.to(guildId).emit("player-data", state.state);
 
       off = state.onChange((state) => {
         io.to(guildId).emit("player-data", state);
       });
     } catch (e) {
-      console.error(e);
+      logError(e);
     }
 
     socket.on("disconnect", () => {
       off && off();
-      console.log("User disconnected");
+      logMessage("User disconnected");
     });
   });
 };

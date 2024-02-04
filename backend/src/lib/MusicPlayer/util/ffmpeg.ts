@@ -44,7 +44,7 @@ const getMetadata = (path: string) => {
 
 const getLoudness = (path: string) => {
   return new Promise((resolve, reject) => {
-    path = `./download/${path}`;
+    path = `${process.env.DOWNLOAD_FOLDER}/${path}`;
     if (!existsSync(path)) reject(new Error(`${path} does not exist`));
     const ffmpeg = spawn("ffmpeg", [
       "-i",

@@ -5,17 +5,22 @@ import {
   VoiceConnection,
   createAudioPlayer,
 } from "@discordjs/voice";
-import MusicPlayerState, { getOrCreatePlayerState } from "../state.js";
+import MusicPlayerState, {
+  PublishStateChange,
+  getOrCreatePlayerState,
+} from "../state.js";
 
 class PlaybackController {
   guildId: string;
   player: AudioPlayer = createAudioPlayer();
   idleTimeout: any = 0;
   IDLE_TIMEOUT_WAIT_MS = 1000;
+  @PublishStateChange("playing")
   playing = false;
   connected = false;
+  @PublishStateChange("currentSongStartedAtTs")
   private startedPlayingAtTs: number = 0;
-  private playerState: MusicPlayerState;
+  playerState: MusicPlayerState;
   playingStatusChangedCallback?: (playingStatus: boolean) => void;
   longIdleCallback?: () => void;
 
@@ -46,7 +51,6 @@ class PlaybackController {
 
   private setPlayingChanged(playingStatus: boolean) {
     this.playing = playingStatus;
-    this.playerState.setState("playing", playingStatus);
     if (this.playingStatusChangedCallback)
       this.playingStatusChangedCallback(playingStatus);
   }
@@ -69,10 +73,6 @@ class PlaybackController {
 
   play(audioResource: AudioResource) {
     this.startedPlayingAtTs = Date.now();
-    this.playerState.setState(
-      "currentSongStartedAtTs",
-      this.startedPlayingAtTs
-    );
     this.player.play(audioResource);
   }
 

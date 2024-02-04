@@ -1,14 +1,18 @@
-import MusicPlayerState, { getOrCreatePlayerState } from "../state.js";
+import MusicPlayerState, {
+  PublishStateChange,
+  getOrCreatePlayerState,
+} from "../state.js";
 import ShuffleManager from "./ShuffleManager.js";
 import { getThumbnail, getTopResult } from "../platforms/youtube.js";
 import type VoiceConnectionManager from "./VoiceConnectionManager.js";
-import type { PlaylistEntry } from "@shared/types.js";
+import type { PlaylistEntry, SongDisplayMetadata } from "@shared/types.js";
 import SongMetadataService from "./SongMetadataService.js";
 import {
   searchSpotifyAndGetYoutubeId,
   spotifyPlaylistToYoutubeIds,
 } from "../platforms/spotify/playlist.js";
 import { encrypt } from "../../crypto.js";
+import { log, logError, logMessage } from "../../log.js";
 
 const URL_IDENTIFIERS = {
   SPOTIFY_TRACK: "Spotify Track URL",
@@ -19,11 +23,17 @@ const URL_IDENTIFIERS = {
 class QueueManager {
   private shuffleManager: ShuffleManager;
   private shuffle = true;
+  @PublishStateChange("playlist")
   private playlist: PlaylistEntry[] = [];
+  @PublishStateChange("currentlyPlaying")
   private currentlyPlaying: PlaylistEntry | null = null;
+  @PublishStateChange("currentSongMetadata")
+  private currentSongMetadata: SongDisplayMetadata | null = null;
+  @PublishStateChange("thumbnail")
+  private currentSongThumbnail: string = "";
   private currentlyShuffling = false;
   private playHistory: PlaylistEntry[] = [];
-  private playerState: MusicPlayerState;
+  playerState: MusicPlayerState;
 
   constructor(voiceConnectionManager: VoiceConnectionManager) {
     this.shuffleManager = new ShuffleManager(voiceConnectionManager);
@@ -41,6 +51,7 @@ class QueueManager {
     this.shuffleManager.playHistory.add(entry.id);
   }
 
+  @log
   async getNext(): Promise<PlaylistEntry | null> {
     const nextFromPlaylist = this.getNextFromPlaylist();
     const playlistEntry =
@@ -53,7 +64,6 @@ class QueueManager {
     if (playlistEntry) {
       this.addHistory(playlistEntry);
       this.currentlyPlaying = playlistEntry;
-      this.playerState.setState("currentlyPlaying", this.currentlyPlaying);
 
       const metadata = await SongMetadataService.getOrCreateDisplayMetadata(
         playlistEntry.id
@@ -61,17 +71,14 @@ class QueueManager {
       if (!metadata)
         throw new Error("Could not get metadata for " + playlistEntry.id);
       try {
-        this.playerState.setState(
-          "thumbnail",
-          await getThumbnail(playlistEntry.id)
-        );
+        this.currentSongThumbnail = await getThumbnail(playlistEntry.id);
       } catch (e) {
-        console.error(e);
+        logError(e);
       }
-      this.playerState.setState("currentSongMetadata", metadata);
+      this.currentSongMetadata = metadata;
     } else {
-      this.playerState.setState("currentlyPlaying", null);
-      this.playerState.setState("currentSongMetadata", null);
+      this.currentSongMetadata = null;
+      this.currentlyPlaying = null;
     }
 
     return playlistEntry ?? null;
@@ -89,23 +96,22 @@ class QueueManager {
     return this.playlist;
   }
 
+  @log
   async addToPlaylist(entry: PlaylistEntry | PlaylistEntry[]): Promise<void> {
     if (Array.isArray(entry)) {
       for (const playlistEntry of entry) {
         await SongMetadataService.getOrCreateDisplayMetadata(playlistEntry.id);
         this.playlist.push(playlistEntry);
-        this.playerState.setState("playlist", this.playlist);
+        this.playlist = [...this.playlist, playlistEntry];
       }
     } else {
       await SongMetadataService.getOrCreateDisplayMetadata(entry.id);
-      this.playlist.push(entry);
-      this.playerState.setState("playlist", this.playlist);
+      this.playlist = [...this.playlist, entry];
     }
   }
 
   removeFromPlaylist(youtubeId: string): void {
     this.playlist = this.playlist.filter((entry) => entry.id !== youtubeId);
-    this.playerState.setState("playlist", this.playlist);
   }
 
   getCurrentlyShuffling(): boolean {
@@ -116,6 +122,15 @@ class QueueManager {
     return this.shuffle;
   }
 
+  getCurrentSongMetadata() {
+    return this.currentSongMetadata;
+  }
+
+  getCurrentSongThumbnail() {
+    return this.currentSongThumbnail;
+  }
+
+  @log
   private identifyUrl(url: string): string {
     const spotifyTrackRegex =
       /https:\/\/open\.spotify\.com\/track\/([a-zA-Z0-9]+)/;
@@ -135,41 +150,64 @@ class QueueManager {
     }
   }
 
+  @log
   private extractYoutubeId(query: string): string | null {
     const youtubeIdRegex =
-      /(?:https?:\/\/)?(?:www\.)?youtu(?:\.be\/|be\.com\/(?:watch\?v=|embed\/|v\/|user\/(?:[\w#]+\/)+))([^&#?\n]+)/;
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
     const match = query.match(youtubeIdRegex);
+    console.log(match && [...match]);
     return match ? match[1] : null;
   }
 
-  async queue(query: string, userId?: string) {
-    let result: string[] | null = [];
+  private async queryToYoutubeIds(query: string): Promise<string[]> {
+    let result: string[] = [];
     let id: string | null = null;
-    switch (this.identifyUrl(query)) {
+
+    const sourceType = this.identifyUrl(query);
+    switch (sourceType) {
       case URL_IDENTIFIERS.SPOTIFY_TRACK:
         id = await searchSpotifyAndGetYoutubeId(query);
+        logMessage("SPOTIFY TRACK", id);
         if (id) result.push(id);
         break;
       case URL_IDENTIFIERS.SPOTIFY_PLAYLIST:
         result = await spotifyPlaylistToYoutubeIds(query);
+        logMessage("SPOTIFY PLAYLIST", result);
         break;
       case URL_IDENTIFIERS.YOUTUBE:
         id = this.extractYoutubeId(query);
+        logMessage("YOUTUBE", id);
         if (id) result.push(id);
         break;
       default:
         id = (await getTopResult(query)) ?? null;
+        logMessage("QUERY", id);
         if (id) result.push(id);
         break;
     }
-    const encryptedUserId = userId ? encrypt(userId) : null;
-    if (result.length > 1) {
-      const first = result.shift() as string;
-      await this.addToPlaylist({ id: first, userId: encryptedUserId });
-      this.addToPlaylist(result.map((id) => ({ id, userId: encryptedUserId })));
-    }
 
     return result;
+  }
+
+  @log
+  async queue(query: string, userId?: string) {
+    try {
+      const result = await this.queryToYoutubeIds(query);
+      const encryptedUserId = userId ? encrypt(userId) : null;
+      if (result.length > 1) {
+        const first = result.shift() as string;
+        await this.addToPlaylist({ id: first, userId: encryptedUserId });
+        this.addToPlaylist(
+          result.map((id) => ({ id, userId: encryptedUserId }))
+        );
+      } else if (result.length) {
+        await this.addToPlaylist({ id: result[0], userId: encryptedUserId });
+      }
+      return result;
+    } catch (e) {
+      logError("Error adding to queue based on query", query, e);
+      return [];
+    }
   }
 }
 

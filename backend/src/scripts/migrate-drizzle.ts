@@ -1,21 +1,14 @@
 import "dotenv-esm/config";
 import * as schema from "../schema.js";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import db from "../db.js";
-
-const connectionString = process.env.postgres_url;
-if (!connectionString) throw new Error("postgres_url not set in .env");
-const client = postgres(connectionString, { max: 1 });
-
-const drizzleDb = drizzle(client, { schema });
+import db, { drizzleDB } from "../db.js";
+import { logMessage } from "../lib/log.js";
 
 const main = async () => {
-  console.log("resetting drizzle db");
-  await drizzleDb.delete(schema.plays).execute();
-  await drizzleDb.delete(schema.skips).execute();
-  await drizzleDb.delete(schema.songs).execute();
-  await drizzleDb.delete(schema.dataConsent).execute();
+  logMessage("resetting drizzle db");
+  await drizzleDB.delete(schema.plays).execute();
+  await drizzleDB.delete(schema.skips).execute();
+  await drizzleDB.delete(schema.songs).execute();
+  await drizzleDB.delete(schema.dataConsent).execute();
 
   const plays = (await db("plays").select(
     "yt_id",
@@ -33,9 +26,9 @@ const main = async () => {
     imported: boolean;
   }[];
 
-  console.log("importing plays");
+  logMessage("importing plays");
   for (const play of plays) {
-    const song = await drizzleDb
+    const song = await drizzleDB
       .insert(schema.songs)
       .values({
         youtubeId: play.yt_id,
@@ -49,7 +42,7 @@ const main = async () => {
       })
       .returning();
     if (!song[0]) throw new Error("Could not insert song");
-    await drizzleDb.insert(schema.plays).values({
+    await drizzleDB.insert(schema.plays).values({
       songId: song[0].id,
       timestamp: new Date(play.timestamp),
       imported: play.imported,
@@ -69,9 +62,9 @@ const main = async () => {
     user_id: string;
     guild_id: string;
   }[];
-  console.log("importing skips");
+  logMessage("importing skips");
   for (const skip of skips) {
-    const song = await drizzleDb
+    const song = await drizzleDB
       .insert(schema.songs)
       .values({
         youtubeId: skip.yt_id,
@@ -82,14 +75,14 @@ const main = async () => {
       })
       .returning();
     if (!song[0]) throw new Error("Could not insert song");
-    await drizzleDb.insert(schema.skips).values({
+    await drizzleDB.insert(schema.skips).values({
       songId: song[0].id,
       timestamp: new Date(skip.timestamp),
       userId: skip.user_id,
       guildId: skip.guild_id,
     });
   }
-  console.log("importing metadata");
+  logMessage("importing metadata");
   const metadata = (await db("song_metadata").select(
     "yt_id",
     "length_seconds",
@@ -110,7 +103,7 @@ const main = async () => {
   }[];
 
   for (const meta of metadata) {
-    const song = await drizzleDb
+    const song = await drizzleDB
       .insert(schema.songs)
       .values({
         youtubeId: meta.yt_id,
@@ -139,9 +132,9 @@ const main = async () => {
   const dataConsent = (await db("data-consent").select("user_id")) as {
     user_id: string;
   }[];
-  console.log("importing data consent");
+  logMessage("importing data consent");
   for (const consent of dataConsent) {
-    await drizzleDb
+    await drizzleDB
       .insert(schema.dataConsent)
       .values({
         userId: consent.user_id,
@@ -155,8 +148,6 @@ const main = async () => {
         },
       });
   }
-
-  await client.end();
 };
 
 main();
