@@ -54,5 +54,7 @@ ENV DOWNLOAD_FOLDER=/data/download
 # Volumes for external mapping
 VOLUME ["/data/cache", "/data/download"]
 
+RUN npm run drizzle:migrate
+
 # Run the app
 CMD ["npm", "run", "start"] # Assuming your entry point is compiled to /dist
