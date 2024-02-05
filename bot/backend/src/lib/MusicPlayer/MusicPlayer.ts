@@ -7,7 +7,7 @@ import VoiceConnectionManager from "./modules/VoiceConnectionManager.js";
 import AudioResourceManager from "./modules/AudioResourceManager.js";
 import QueueManager from "./modules/QueueManager.js";
 import { generatePlayingCard } from "./util/canvas/canvas.js";
-import { decryptIfEncrypted } from "../crypto.js";
+import { decrypt, decryptIfEncrypted } from "../crypto.js";
 import SongMetadataService from "./modules/SongMetadataService.js";
 import { cache } from "../Cache.js";
 import { log, logError, logMessage } from "../log.js";
@@ -258,7 +258,7 @@ class MusicPlayer implements IMusicPlayer {
       return {
         title: "How did we end up here?",
         description: `"${author} - ${title}" has been played by ${userIds
-          .map((id) => `<@${id}>`)
+          .map((id) => `<@${decrypt(id)}>`)
           .join(", ")}`,
         thumbnail: await getThumbnail(currentlyPlaying.id),
       };

@@ -1,14 +1,17 @@
 import { drizzleDB } from "../../../db.js";
 import { cache, timeConstants, type CacheKeyable } from "../../Cache.js";
-import { encrypt } from "../../crypto.js";
+import { decrypt, encrypt } from "../../crypto.js";
 import UserDataService from "../../UserDataService.js";
 import {
   type CreatePlay,
   type SongWithPlaysAndSkips,
   plays,
   skips,
+  genres,
+  songsToGenres,
 } from "../../../schema.js";
 import SongMetadataService from "./SongMetadataService.js";
+import { eq, sql } from "drizzle-orm";
 
 class InteractionService implements CacheKeyable {
   guildId: string;
@@ -110,14 +113,49 @@ class InteractionService implements CacheKeyable {
       where: (songs, { eq }) => eq(songs.youtubeId, youtubeId),
     });
     if (!song) throw new Error("Song not found");
-    const userIds = await drizzleDB.query.plays.findMany({
-      columns: {
-        userId: true,
-      },
-      where: (plays, { eq }) => eq(plays.songId, song.id),
-    });
+
+    const userIds = await drizzleDB
+      .selectDistinct({
+        userId: plays.userId,
+      })
+      .from(plays)
+      .where(eq(plays.songId, song.id));
 
     return userIds.map((userId) => userId.userId);
+  }
+
+  async getGenresForUsers() {
+    const genreCounts = drizzleDB.$with("genre_counts").as(
+      drizzleDB
+        .select({
+          userId: sql`${plays.userId}`.mapWith(decrypt).as("userId"),
+          genreName: genres.name,
+          genreCount: sql`COUNT(*)`.as("genreCount"),
+        })
+        .from(plays)
+        .where(sql`${plays.userId} IS NOT NULL`)
+        .fullJoin(songsToGenres, eq(plays.songId, songsToGenres.songId))
+        .fullJoin(genres, eq(songsToGenres.genreId, genres.id))
+        .groupBy(plays.userId, genres.name)
+    );
+
+    const genresForUsers = await drizzleDB
+      .with(genreCounts)
+      .select({
+        userId: genreCounts.userId,
+        genres:
+          sql`STRING_AGG(${genreCounts.genreName} || ';;' || ${genreCounts.genreCount}, ', '  ORDER BY ${genreCounts.genreCount} DESC)`.mapWith(
+            (val) =>
+              val.split(", ").map((genre: string) => {
+                const [name, count] = genre.split(";;");
+                return { name, count };
+              }) as { name: string; count: number }[]
+          ),
+      })
+      .from(genreCounts)
+      .groupBy(genreCounts.userId);
+
+    return genresForUsers;
   }
 }
 
