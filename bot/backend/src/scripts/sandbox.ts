@@ -13,16 +13,6 @@ import { eq, not, sql } from "drizzle-orm";
 import { decrypt } from "../lib/crypto.js";
 
 const main = async () => {
-  // const genresForUser = await drizzleDB
-  //   .select({
-  //     userId: plays.userId,
-  //     genreName: genres.name,
-  //   })
-  //   .from(plays)
-  //   .leftJoin(songsToGenres, eq(plays.songId, songsToGenres.songId))
-  //   .leftJoin(genres, eq(songsToGenres.genreId, genres.id))
-  //   .orderBy(genres.name);
-
   const genreCounts = drizzleDB.$with("genre_counts").as(
     drizzleDB
       .select({
@@ -52,18 +42,6 @@ const main = async () => {
     })
     .from(genreCounts)
     .groupBy(genreCounts.userId);
-  // .select({
-  //   userId: plays.userId,
-  //   genres:
-  //     sql`STRING_AGG(${genres.name} || ' ' ${genreCounts.genreCount}, ', '  ORDER BY ${genres.name})`.mapWith(
-  //       (val) => val.split(", ")
-  //     ),
-  // })
-  // .from(plays)
-  // .fullJoin(songsToGenres, eq(plays.songId, songsToGenres.songId))
-  // .fullJoin(genres, eq(songsToGenres.genreId, genres.id))
-  // .groupBy(plays.userId)
-  // .orderBy(plays.userId);
 
   console.log(genresForUser);
   // writeFileSync("./genresForUser.json", JSON.stringify(genresForUser, null, 2));
