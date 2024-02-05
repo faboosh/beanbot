@@ -1,8 +1,9 @@
 import gm from "gm";
 import fs from "fs";
+import fsPromises from "fs/promises";
+import path from "path";
 import { createWriteStream, existsSync, mkdirSync } from "fs";
 import { fileURLToPath } from "url";
-import path from "path";
 import axios from "axios";
 import { randomUUID } from "crypto";
 import { getThumbnail } from "../../platforms/youtube.js";
@@ -86,8 +87,10 @@ const text = (
 
 const tempPaths: string[] = [];
 
-const cleanupTemp = () => {
-  fs.rmSync(TMP_DIR, { recursive: true, force: true });
+const cleanupTemp = async () => {
+  for (const file of await fsPromises.readdir(TMP_DIR)) {
+    await fsPromises.unlink(path.join(TMP_DIR, file));
+  }
 };
 
 const borderRadius = (
@@ -151,16 +154,16 @@ const generatePlayingCard = (
     const totalSeconds =
       (await SongMetadataService.getOrCreateDisplayMetadata(youtubeId))
         ?.lengthSeconds ?? 0;
-    if (!totalSeconds) throw new Error("Song length not found");
+    if (!totalSeconds) return reject(new Error("Song length not found"));
     const thumbnailUrl = await getThumbnail(youtubeId);
-    if (!thumbnailUrl) throw new Error("No thumbnail found");
+    if (!thumbnailUrl) return reject(new Error("No thumbnail found"));
 
     let { title, author } = await SongMetadataService.getTitleAuthor(youtubeId);
     if (title.length > maxTitleLen)
       title = title.substring(0, maxTitleLen) + "...";
     const outPath = path.join(OUT_DIR, `${youtubeId}.png`);
     const thumbnail = await downloadThumbnail(youtubeId);
-    if (!thumbnail) throw new Error("Could not download thumbnail");
+    if (!thumbnail) return reject(new Error("Could not download thumbnail"));
     const blurredThumb = await toTemp(
       gm(thumbnail)
         .modulate(70, 70)
