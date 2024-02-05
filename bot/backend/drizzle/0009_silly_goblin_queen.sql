@@ -1,0 +1,1 @@
+ALTER TABLE "songs-to-genres" ADD CONSTRAINT "songs-to-genres_song_id_genre_id_unique" UNIQUE("song_id","genre_id");

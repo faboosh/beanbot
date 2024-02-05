@@ -1,0 +1,25 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "tsx": false, // set to false if you're not using React
+      "decorators": true,
+      "dynamicImport": true
+    },
+    "target": "es2018", // or whatever ECMAScript target you prefer
+    "transform": {
+      "react": {
+        "pragma": "React.createElement",
+        "pragmaFrag": "React.Fragment",
+        "throwIfNamespace": true,
+        "development": false,
+        "useBuiltins": true
+      },
+      "legacyDecorator": true,
+      "decoratorMetadata": true
+    }
+  },
+  "module": {
+    "type": "es6" // or "es6" if you're using ES modules
+  }
+}

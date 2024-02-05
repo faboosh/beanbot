@@ -1,0 +1,291 @@
+{
+  "id": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+  "youtubeId": "8xg3vE8Ie_E",
+  "youtubeTitle": "Taylor Swift - Love Story",
+  "youtubeAuthor": "TaylorSwiftVEVO",
+  "spotifyId": null,
+  "spotifyTitle": "Love Story",
+  "spotifyAuthor": "Taylor Swift",
+  "fileName": "./download/taylor-swift-love-story-8xg3vE8Ie_E.m4a",
+  "lengthSeconds": 236.541678,
+  "loudnessLufs": -26.3,
+  "genres": [
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "d8a53c19-3f70-45aa-a99c-12e8df3b7013",
+      "certainty": 0.122662752866745,
+      "genre": {
+        "id": "d8a53c19-3f70-45aa-a99c-12e8df3b7013",
+        "name": "Dance-pop"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "25680d53-1f5b-4b14-9f26-be8cdb3dba8b",
+      "certainty": 0.3765968680381775,
+      "genre": {
+        "id": "25680d53-1f5b-4b14-9f26-be8cdb3dba8b",
+        "name": "Pop Rock"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "a5ac2675-ac5a-4986-b9a8-90a45f7d551f",
+      "certainty": 0.15926510095596313,
+      "genre": {
+        "id": "a5ac2675-ac5a-4986-b9a8-90a45f7d551f",
+        "name": "Soft Rock"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "643ec69a-7dd5-4c79-9d7b-d787833af6fc",
+      "certainty": 0.09626197814941406,
+      "genre": {
+        "id": "643ec69a-7dd5-4c79-9d7b-d787833af6fc",
+        "name": "Alternative Rock"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "ab060206-2916-4440-8dd4-41c0d550e5f8",
+      "certainty": 0.180565744638443,
+      "genre": {
+        "id": "ab060206-2916-4440-8dd4-41c0d550e5f8",
+        "name": "K-pop"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "4f5b1663-19dc-4ab9-9d52-3e9a2b5b150b",
+      "certainty": 0.44365862011909485,
+      "genre": {
+        "id": "4f5b1663-19dc-4ab9-9d52-3e9a2b5b150b",
+        "name": "Pop: Ballad"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "c0385de3-452b-4d0a-aa71-e189625a2ab9",
+      "certainty": 0.19302430748939514,
+      "genre": {
+        "id": "c0385de3-452b-4d0a-aa71-e189625a2ab9",
+        "name": "Vocal"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "ad22272e-99cc-46f3-acac-1a55e90a534e",
+      "certainty": 0.05666032433509827,
+      "genre": {
+        "id": "ad22272e-99cc-46f3-acac-1a55e90a534e",
+        "name": "Euro House"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "e0a4e6eb-0830-4a46-853f-bd80285a4383",
+      "certainty": 0.24580422043800354,
+      "genre": {
+        "id": "e0a4e6eb-0830-4a46-853f-bd80285a4383",
+        "name": "Europop"
+      }
+    },
+    {
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "genreId": "c64b60df-2c39-4d88-b42d-bbfe116663bc",
+      "certainty": 0.10110688209533691,
+      "genre": {
+        "id": "c64b60df-2c39-4d88-b42d-bbfe116663bc",
+        "name": "Bubblegum"
+      }
+    }
+  ],
+  "plays": [
+    {
+      "id": "31508cef-309e-46a2-b3f1-0ea87d33ff8e",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "scpMcRwq/+0AvURTmmLD9KqWnNUfTWW4/Foh9DZGYuY=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2023-02-03T15:52:29.178Z",
+      "imported": false
+    },
+    {
+      "id": "9880554c-cc9c-458b-91e4-31a9c246fcf4",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-09-04T20:14:33.789Z",
+      "imported": false
+    },
+    {
+      "id": "af51c337-aa89-42de-81a5-fa2acd9abe13",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-08-27T18:23:01.311Z",
+      "imported": false
+    },
+    {
+      "id": "716c018d-6371-46c6-9b8d-aca4c9452877",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-05-19T19:10:31.252Z",
+      "imported": false
+    },
+    {
+      "id": "1b78e405-581d-42ad-8e2a-bd1fe6a846ba",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-05-19T19:10:17.279Z",
+      "imported": false
+    },
+    {
+      "id": "14c3b4c3-f597-4ac9-a8dc-e35e8f637658",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-05-11T16:21:50.149Z",
+      "imported": false
+    },
+    {
+      "id": "1f094dfd-e848-4bd6-9413-83f04a18895d",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "/QesNUw211fDN7izaxkqkF+asUCzOyMPBbgtEp/imWA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-03-12T22:39:22.914Z",
+      "imported": false
+    },
+    {
+      "id": "f5702a0e-41ed-4820-953b-d168de970caf",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2022-02-03T21:32:12.761Z",
+      "imported": false
+    },
+    {
+      "id": "a44cb536-189f-4535-bb1f-11cd08e2c657",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-10-11T16:35:39.485Z",
+      "imported": false
+    },
+    {
+      "id": "f8a34991-61f3-4253-8979-f58bc9285f26",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-10-11T16:34:51.035Z",
+      "imported": false
+    },
+    {
+      "id": "94211960-5bd8-43dc-9b4b-1eccee9d522a",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-09-09T18:41:23.877Z",
+      "imported": false
+    },
+    {
+      "id": "ca145823-5f9f-48bc-81ba-81695f05d933",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "scpMcRwq/+0AvURTmmLD9KqWnNUfTWW4/Foh9DZGYuY=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-08-31T21:45:46.128Z",
+      "imported": false
+    },
+    {
+      "id": "5e17fc4d-7c0c-4832-b8b3-524f188bd715",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-08-28T16:06:48.406Z",
+      "imported": false
+    },
+    {
+      "id": "eddd51f9-5d8c-4005-b01e-a68282f04dca",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-07-25T18:09:50.884Z",
+      "imported": false
+    },
+    {
+      "id": "73a178a3-0a3a-4aa6-b8f6-70e15c9cee21",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "2VGXY2KENrWND7Jnc+jat6Bwexyi3zjS6xzRGEsETow=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-07-24T21:09:26.062Z",
+      "imported": false
+    },
+    {
+      "id": "e95a5669-afa8-4522-b280-40244b2e61ff",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "fIKOac7Vf3PnNhxYA80Qg71SDMfIGw5LTpswEtRbD9I=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-07-22T20:56:43.277Z",
+      "imported": false
+    },
+    {
+      "id": "e6b65aee-e88a-4d03-9864-1e447468e520",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "fIKOac7Vf3PnNhxYA80Qg71SDMfIGw5LTpswEtRbD9I=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-07-22T20:56:36.333Z",
+      "imported": false
+    },
+    {
+      "id": "93029c82-ee10-44c1-bce3-4db57660923f",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-06-20T15:56:40.632Z",
+      "imported": false
+    },
+    {
+      "id": "08c29472-ae85-4442-832c-0f9101d44380",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-06-14T14:26:06.355Z",
+      "imported": false
+    },
+    {
+      "id": "42a91680-fdb5-4266-8152-ced933701223",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-06-06T17:02:23.964Z",
+      "imported": false
+    },
+    {
+      "id": "927e9063-059a-4b2a-b781-e2b898089030",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-05-30T17:40:15.749Z",
+      "imported": false
+    },
+    {
+      "id": "74385cb5-58ff-43e3-886d-e397aac91040",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-05-22T12:30:56.743Z",
+      "imported": false
+    },
+    {
+      "id": "10068ae2-11f3-4154-82cb-c0a104e52418",
+      "songId": "4544eb2f-f721-49bd-bf17-33fba2fad6a6",
+      "userId": "0ssEKXdN+1VxwLzAIkndAlf7sGdsuR3hlWTVY6REFqA=",
+      "guildId": "crzHFdel9n3Vo8JhEO1/mNK//X4UyZmz5hW+fJGgBBQ=",
+      "timestamp": "2021-05-20T20:32:12.005Z",
+      "imported": false
+    }
+  ],
+  "skips": []
+}

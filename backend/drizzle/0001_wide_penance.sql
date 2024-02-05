@@ -1,1 +1,0 @@
-ALTER TABLE "plays" ALTER COLUMN "song_id" SET NOT NULL;

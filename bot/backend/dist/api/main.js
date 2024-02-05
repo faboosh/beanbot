@@ -1,0 +1,177 @@
+import "dotenv-esm/config";
+import express from "express";
+import { createServer } from "http";
+import path from "path";
+import { Server } from "socket.io";
+import { getOrCreatePlayerState } from "../lib/MusicPlayer/state.js";
+import { decodeJWT } from "../jwt.js";
+import { Subcommands } from "../commands/yt.js";
+import { authMiddleware } from "./middleware.js";
+import { getPlayer } from "../lib/MusicPlayer/MusicPlayer.js";
+import { search } from "../lib/MusicPlayer/platforms/youtube.js";
+import cors from "cors";
+import SongMetadataService from "../lib/MusicPlayer/modules/SongMetadataService.js";
+import { logError, logMessage } from "../lib/log.js";
+const start = ()=>{
+    const app = express();
+    const port = process.env.API_PORT;
+    const publicPath = path.join("../frontend/", "dist");
+    const server = createServer(app);
+    const io = new Server(server, {
+        cors: {
+            origin: "*",
+            methods: [
+                "GET",
+                "POST"
+            ]
+        }
+    });
+    app.use(express.static(publicPath));
+    app.use(cors());
+    app.use("/api", authMiddleware);
+    app.post("/api/v1/playback/:action", async (req, res)=>{
+        if (!(req === null || req === void 0 ? void 0 : req.user)) return res.status(401).json({
+            detail: "Not authorized"
+        });
+        const action = req.params.action;
+        const player = getPlayer(req.user.guildId);
+        if (!player) return res.status(400).json({
+            detail: "No player instance found"
+        });
+        switch(action){
+            case Subcommands.Pause:
+                player.pause();
+                break;
+            case Subcommands.Unpause:
+                player.unpause();
+                break;
+            case Subcommands.Skip:
+                player.skip(req.user.userId);
+                break;
+            default:
+                return res.status(400).json({
+                    detail: "Invalid action"
+                });
+        }
+        return res.status(200).json({
+            detail: "OK"
+        });
+    });
+    app.post("/api/v1/queue/:id", async (req, res)=>{
+        if (!(req === null || req === void 0 ? void 0 : req.user)) return res.status(401).json({
+            detail: "Not authorized"
+        });
+        const id = req.params.id;
+        const player = getPlayer(req.user.guildId);
+        if (!player) return res.status(400).json({
+            detail: "No player instance found"
+        });
+        await SongMetadataService.getOrCreateDisplayMetadata(id);
+        player.queueById(id, req.user.userId);
+        return res.status(200).json({
+            detail: "OK"
+        });
+    });
+    app.delete("/api/v1/queue/:id", (req, res)=>{
+        if (!(req === null || req === void 0 ? void 0 : req.user)) return res.status(401).json({
+            detail: "Not authorized"
+        });
+        const id = req.params.id;
+        const player = getPlayer(req.user.guildId);
+        if (!player) return res.status(400).json({
+            detail: "No player instance found"
+        });
+        player.removeFromQueue(id);
+        return res.status(200).json({
+            detail: "OK"
+        });
+    });
+    app.get("/api/v1/search", async (req, res)=>{
+        const searchTerm = req.query.search;
+        if (!searchTerm) return res.status(400).json({
+            detail: "No search query param provided"
+        });
+        try {
+            const results = await search(searchTerm);
+            return res.status(200).json(results);
+        } catch (e) {
+            logError(e);
+            return res.status(500).json({
+                detail: "Something went wrong"
+            });
+        }
+    });
+    app.get("/api/v1/videos/:id", async (req, res)=>{
+        const id = req.params.id;
+        try {
+            const videoDetails = await SongMetadataService.getOrCreateDisplayMetadata(id);
+            return res.status(200).json(videoDetails);
+        } catch (e) {
+            logError(e);
+            return res.status(500).json({
+                detail: "Something went wrong"
+            });
+        }
+    });
+    app.get("/api/v1/videos/:id/played-by", async (req, res)=>{
+        if (!(req === null || req === void 0 ? void 0 : req.user)) return res.status(401).json({
+            detail: "Not authorized"
+        });
+        const id = req.params.id;
+        const player = getPlayer(req.user.guildId);
+        if (!player) return res.status(400).json({
+            detail: "No player instance found"
+        });
+        const user = await player.getUsersWhoPlayed(id);
+        return res.status(200).json(user);
+    });
+    app.get("/api/v1/users/:id", async (req, res)=>{
+        if (!(req === null || req === void 0 ? void 0 : req.user)) return res.status(401).json({
+            detail: "Not authorized"
+        });
+        const id = req.params.id;
+        const player = getPlayer(req.user.guildId);
+        if (!player) return res.status(400).json({
+            detail: "No player instance found"
+        });
+        const user = await player.getUserDetails(id);
+        return res.status(200).json(user);
+    });
+    app.get("*", (req, res)=>{
+        // Ensure it's not an API request
+        if (!req.url.startsWith("/api/v1")) {
+            res.sendFile("index.html", {
+                root: publicPath
+            });
+        } else {
+            // Handle 404 for API routes or let your API router handle it
+            res.status(404).send("API route not found");
+        }
+    });
+    server.listen(port, ()=>{
+        logMessage(`API running on port ${port}`);
+    });
+    io.on("connection", async (socket)=>{
+        var _socket_handshake_query;
+        let off;
+        const token = (_socket_handshake_query = socket.handshake.query) === null || _socket_handshake_query === void 0 ? void 0 : _socket_handshake_query.token;
+        if (!token) return;
+        try {
+            const { guildId, userId } = await decodeJWT(token);
+            const state = getOrCreatePlayerState(guildId);
+            socket.join(guildId);
+            logMessage(`${userId} connected`);
+            io.to(guildId).emit("player-data", state.state);
+            off = state.onChange((state)=>{
+                io.to(guildId).emit("player-data", state);
+            });
+        } catch (e) {
+            logError(e);
+        }
+        socket.on("disconnect", ()=>{
+            off && off();
+            logMessage("User disconnected");
+        });
+    });
+};
+export { start };
